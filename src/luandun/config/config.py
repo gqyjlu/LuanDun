@@ -11,10 +11,11 @@ Created on 2014年6月19日
 import ConfigParser
 import string
 import threading
+import os
 
 
 config_manager = None
-config_manager_lock = threading.Lock
+config_manager_lock = threading.Lock()
 
 
 def parse_address(s):
@@ -47,7 +48,7 @@ class ConfigManager(object):
         self.config = ConfigParser.ConfigParser()
     
     def initialize(self):
-        self.config.read("../etc/luandun.ini")
+        self.config.read(os.path.expanduser("~/.luandun.ini"))
         
     def producer_address(self):
         return parse_address(self.config.get("producer", "address"))

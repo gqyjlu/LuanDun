@@ -19,10 +19,10 @@ from luandun.config import config
 
 
 producer_manager = None
-producer_manager_lock = threading.Lock
+producer_manager_lock = threading.Lock()
 
 worker_manager = None
-worker_manager_lock = threading.Lock
+worker_manager_lock = threading.Lock()
 
 
 def add(url, queue_name, method, params):
@@ -64,10 +64,13 @@ class Job(object):
         self.job.release()
         
     def execute(self):
-        #url = self.body["url"]
-        #method = self.body["method"]
-        #params = self.body["params"]
-        pass
+        print self
+        
+    def __str__(self):
+        url = self.body["url"]
+        method = self.body["method"]
+        params = self.body["params"]
+        return url + "\n" + method + "\n" + repr(params)
         
 class Worker(object):
     
@@ -142,6 +145,7 @@ class ProducerGroup(object):
         for i in range(len(self.producers)):
             try:
                 self.__put(body)
+                return
             except beanstalkc.BeanstalkcException:
                 logging.warn("put failure " + i + "times")
                 continue
