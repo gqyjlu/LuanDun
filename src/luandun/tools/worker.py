@@ -9,9 +9,15 @@ Created on 2014年6月11日
 
 
 import getopt
+import logging
+import string
 import sys
 import threading
+
+from beanstalkc import BeanstalkcException
+
 from luandun.api import taskqueue
+from luandun.config import config
 
 
 def usage():
@@ -19,17 +25,31 @@ def usage():
     print "-h, --help: print help message."
     print "-v, --version: print version message"
     print "-t, --tube: set taskqueue tube"
-    print "-a, --address: set taskqueue address"
-    print "-n, --number: set the number of workers"
+    print "-a, --address: set taskqueue address(default localhost:11300)"
+    print "-n, --number: set the number of workers(default: 1)"
     
     
 def version():
     print "worker.py 0.1.0"
     
     
-class WorkerThread(object):
+class WorkerThread(threading.Thread):
+    
     def __init__(self):
-        
+        pass
+    
+    def run(self):
+        while True:
+            try:
+                job = taskqueue.get_worker_manager().reserve()
+                try:
+                    job.execute()
+                    job.delete()
+                except BeanstalkcException as be:
+                    logging.exception(be)
+                    job.release()
+            except Exception as e:
+                logging.exception(e)
     
     
 def main(argv):
@@ -37,7 +57,10 @@ def main(argv):
         options, args = getopt.getopt(sys.argv[1:], "hvt:a:n:", ["help", "version", "tube=", "address=", "number="])
     except getopt.GetoptError:
         usage()
-        sys.exit(1)  
+        sys.exit(1)
+    number = 1
+    address = "localhost:11300"
+    tube = None
     for o, a in options:
         if o in ("-h", "--help"):
             usage()
@@ -50,11 +73,18 @@ def main(argv):
         elif o in ("-a", "--address"):
             address = a
         elif o in ("-n", "--number"):
-            number = a
+            number = string.atoi(a)
         else:
             print "unhandled option: " + o
             sys.exit(2)
-    taskqueue.get_worker_manager().initialize(address)
+    taskqueue.get_worker_manager().initialize(config.parse_address(address))
+    taskqueue.get_worker_manager().update_tubes(config.parse_tube(tube))
+    threads = []
+    for i in range(number):
+        threads.append(WorkerThread())
+        threads[i].start()
+    for i in range(number):
+        threads[i].join()
     
             
 if __name__ == "__main__":

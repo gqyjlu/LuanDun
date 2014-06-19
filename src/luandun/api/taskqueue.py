@@ -11,10 +11,11 @@ Created on 2014年6月11日
 import json
 import logging
 import random
-import string
 import threading
 
 import beanstalkc
+
+from luandun.config import config
 
 
 producer_manager = None
@@ -46,7 +47,7 @@ def get_producer_manager():
     if producer_manager is None:
         with producer_manager_lock:
             if producer_manager is None:
-                producer_manager = ProducerManager(beanstalkc.DEFAULT_HOST + ":" + str(beanstalkc.DEFAULT_PORT))
+                producer_manager = ProducerManager(config.get_config_manager().producer_address())
     return producer_manager
 
 
@@ -54,6 +55,7 @@ class Job(object):
     
     def __init__(self, job):
         self.job = job
+        self.body = json.loads(job.body)
         
     def delete(self):
         self.job.delete()
@@ -61,6 +63,11 @@ class Job(object):
     def release(self):
         self.job.release()
         
+    def execute(self):
+        #url = self.body["url"]
+        #method = self.body["method"]
+        #params = self.body["params"]
+        pass
         
 class Worker(object):
     
@@ -72,7 +79,7 @@ class Worker(object):
     def reserve(self, timeout):
         return Job(self.beanstalk.reserve(timeout))
     
-    def update_tubes(self, tubes):
+    def update_tubes(self, tubes=None):
         if tubes is None:
             tubes = self.beanstalk.tubes()
         for tube in tubes:
@@ -85,9 +92,8 @@ class WorkerManager(object):
         self.workers = []
     
     def initialize(self, addresses):
-        for address in addresses.split(","):
-            fields = address.split(":")
-            self.workers.append(Worker(fields[0], string.atoi(fields[1])))
+        for address in addresses:
+            self.workers.append(Worker(address[0], address[1]))
             
     def update_tubes(self, tubes=None):
         for worker in self.workers:
@@ -121,8 +127,8 @@ class ProducerGroup(object):
         self.producers = []
         self.lock = threading.Lock()
         for socket in sockets:
-            self.producers.append(Producer(socket[0], socket[1], tube))
-        
+            self.producers.append(Producer(socket[0], socket[1], self.tube))
+            
     def __put(self, body):
         with self.lock:
             i = self.index = (self.index + 1) % len(self.producers)
@@ -146,17 +152,13 @@ class ProducerManager(object):
     
     def __init__(self, addresses):
         self.producer_groups = {}
-        self.sockets = []
+        self.sockets = addresses
         self.lock = threading.Lock()
-        for address in addresses.split(","):
-            fields = address.split(":")
-            socket = [fields[0], string.atoi(fields[1])]
-            self.sockets.append(socket)
             
     def __get_producer_group(self, tube):
         with self.lock:
             if tube not in self.producer_groups:
-                self.producer_groups[tube] = ProducerGroup(self.sockets)
+                self.producer_groups[tube] = ProducerGroup(tube, self.sockets)
             return self.producer_groups[tube]
         
     def put(self, tube, body):
