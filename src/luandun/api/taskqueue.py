@@ -15,6 +15,7 @@ import threading
 import urllib
 
 import beanstalkc
+from beanstalkc import SocketError
 
 from luandun.config import config
 
@@ -93,13 +94,21 @@ class Worker(object):
         self.beanstalk = beanstalkc.Connection(host, port)
             
     def reserve(self, timeout):
-        return Job(self.beanstalk.reserve(timeout))
+        try:
+            return Job(self.beanstalk.reserve(timeout))
+        except SocketError as ae:
+            self.beanstalk.reconnect()
+            raise ae
     
     def update_tubes(self, tubes=None):
-        if tubes is None:
-            tubes = self.beanstalk.tubes()
-        for tube in tubes:
-            self.beanstalk.watch(tube)
+        try:
+            if tubes is None:
+                tubes = self.beanstalk.tubes()
+            for tube in tubes:
+                self.beanstalk.watch(tube)
+        except SocketError as ae:
+            self.beanstalk.reconnect()
+            raise ae
         
 
 class WorkerManager(object):
@@ -129,7 +138,11 @@ class Producer(object):
         self.beanstalk.use(tube)
         
     def put(self, body):
-        self.beanstalk.put(body)
+        try:
+            self.beanstalk.put(body)
+        except SocketError as se:
+            self.beanstalk.reconnect()
+            raise se
         
     def __str__(self):
         return self.host + ":" + str(self.port) + "/" + self.tube
@@ -179,6 +192,5 @@ class ProducerManager(object):
             return self.producer_groups[tube]
         
     def put(self, tube, body):
-        print "ff"
         self.__get_producer_group(tube).put(body)
     
