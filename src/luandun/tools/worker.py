@@ -42,8 +42,8 @@ class WorkerThread(threading.Thread):
                 try:
                     job.execute()
                     job.delete()
-                except BeanstalkcException as be:
-                    logging.exception(be)
+                except Exception as e:
+                    logging.exception(e)
                     job.release()
             except Exception as e:
                 logging.exception(e)

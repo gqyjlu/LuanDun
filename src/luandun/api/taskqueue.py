@@ -12,6 +12,7 @@ import json
 import logging
 import random
 import threading
+import urllib
 
 import beanstalkc
 
@@ -25,12 +26,16 @@ worker_manager = None
 worker_manager_lock = threading.Lock()
 
 
-def add(url, queue_name, method, params):
+def add(url, queue_name=None, method="GET", params=None):
     body = {}
     body["url"] = url
     body["method"] = method
     body["params"] = params
-    get_producer_manager().put(queue_name, json.dumps(body))
+    if queue_name is None:
+        tube = config.get_config_manager().business()
+    else:
+        tube = config.get_config_manager().business() + "_" + queue_name
+    get_producer_manager().put(tube, json.dumps(body))
     
     
 def get_worker_manager():
@@ -64,7 +69,15 @@ class Job(object):
         self.job.release()
         
     def execute(self):
-        print self
+        url = self.body["url"]
+        params = urllib.urlencode(self.body["params"])
+        result = None
+        if self.body["method"] == "POST":
+            result = urllib.urlopen(url, params)
+        else:
+            result = urllib.urlopen(url + "?" + params)
+        if 200 != result.getcode():
+            raise Exception("Failure of Job")
         
     def __str__(self):
         url = self.body["url"]
@@ -166,5 +179,6 @@ class ProducerManager(object):
             return self.producer_groups[tube]
         
     def put(self, tube, body):
+        print "ff"
         self.__get_producer_group(tube).put(body)
     

@@ -38,18 +38,21 @@ def get_config_manager():
         with config_manager_lock:
             if config_manager is None:
                 config_manager = ConfigManager()
-                config_manager.initialize()
     return config_manager
 
 
 class ConfigManager(object):
     
     def __init__(self):
-        self.config = ConfigParser.ConfigParser()
+        self.__config = ConfigParser.ConfigParser()
     
-    def initialize(self):
-        self.config.read(os.path.expanduser("~/.luandun.ini"))
+    def initialize(self, business):
+        self.__config.read(os.path.expanduser("~/.luandun.ini"))
+        self.__business = business
+        
+    def business(self):
+        return self.__business
         
     def producer_address(self):
-        return parse_address(self.config.get("producer", "address"))
+        return parse_address(self.__config.get("producer", "address"))
     
