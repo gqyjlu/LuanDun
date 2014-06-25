@@ -1,5 +1,5 @@
 #!/bin/bash
 
-export PYTHONPATH=/Users/prstcsnpr/git/LuanDun/src
+. env.sh
 
 cd ../src/luandun/tools/ && python worker.py -t magicformula

@@ -14,10 +14,8 @@ import string
 import sys
 import threading
 
-from beanstalkc import BeanstalkcException
-
 from luandun.api import taskqueue
-from luandun.config import config
+from luandun import config
 
 
 def usage():

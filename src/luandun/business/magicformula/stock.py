@@ -8,18 +8,20 @@ Created on 2014年6月24日
 '''
 
 
-class StockModel(object):
+from cqlengine import columns
+from cqlengine.models import Model
+
+
+class StockModel(Model):
+    __keyspace__ = "magicformula"
+    __table_name__ = "stock"
+    ticker = columns.Text(primary_key=True)
+    title = columns.Text()
+    market_capital = columns.Float()
+    balance = columns.Text()
+    profit = columns.Text()
+    cash = columns.Text()
     
-    def __init__(self):
-        self.ticker = ""
-        self.title = ""
-        self.market_capital = 0.0
-        self.financial_statement = ""
-
-    @classmethod  
-    def get_or_insert(cls, ticker):
-        pass
-
     @classmethod
-    def put(cls):
+    def get_or_create(cls, **kwargs):
         pass

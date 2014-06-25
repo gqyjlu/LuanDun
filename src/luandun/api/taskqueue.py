@@ -17,7 +17,10 @@ import urllib
 import beanstalkc
 from beanstalkc import SocketError
 
-from luandun.config import config
+from luandun import config
+from luandun.exception import LuanDunException
+from luandun.exception import NoAvailableTaskQueueException
+from luandun.exception import TaskQueueConnectionException
 
 
 producer_manager = None
@@ -27,15 +30,15 @@ worker_manager = None
 worker_manager_lock = threading.Lock()
 
 
-def add(url, queue_name=None, method="GET", params=None):
+def add(url, keyspace, queue_name=None, method="GET", params=None):
     body = {}
     body["url"] = url
     body["method"] = method
     body["params"] = params
     if queue_name is None:
-        tube = config.get_config_manager().business()
+        tube = keyspace
     else:
-        tube = config.get_config_manager().business() + "_" + queue_name
+        tube = keyspace + "_" + queue_name
     get_producer_manager().put(tube, json.dumps(body))
     
     
@@ -78,7 +81,7 @@ class Job(object):
         else:
             result = urllib.urlopen(url + "?" + params)
         if 200 != result.getcode():
-            raise Exception("Failure of Job")
+            raise LuanDunException("Failure of Job")
         
     def __str__(self):
         url = self.body["url"]
@@ -98,7 +101,7 @@ class Worker(object):
             return Job(self.beanstalk.reserve(timeout))
         except SocketError as ae:
             self.beanstalk.reconnect()
-            raise ae
+            raise TaskQueueConnectionException()
     
     def update_tubes(self, tubes=None):
         try:
@@ -108,7 +111,7 @@ class Worker(object):
                 self.beanstalk.watch(tube)
         except SocketError as ae:
             self.beanstalk.reconnect()
-            raise ae
+            raise TaskQueueConnectionException()
         
 
 class WorkerManager(object):
@@ -142,7 +145,7 @@ class Producer(object):
             self.beanstalk.put(body)
         except SocketError as se:
             self.beanstalk.reconnect()
-            raise se
+            raise TaskQueueConnectionException()
         
     def __str__(self):
         return self.host + ":" + str(self.port) + "/" + self.tube
@@ -175,7 +178,7 @@ class ProducerGroup(object):
             except beanstalkc.BeanstalkcException:
                 logging.warn("put failure " + i + "times")
                 continue
-        raise beanstalkc.BeanstalkcException()
+        raise NoAvailableTaskQueueException()
     
     
 class ProducerManager(object):

@@ -8,22 +8,27 @@ Created on 2014年6月24日
 '''
 
 
+from cqlengine import connection
+from cqlengine.management import sync_table
 import tornado.ioloop
 import tornado.web
-from luandun.api import db
+
+from luandun.business.magicformula.stock import StockModel
 from luandun.business.magicformula.update_stock_info import UpdateStockInfoHandler
 from luandun.business.magicformula.update_stock_info import UpdateMarketCapitalHandler
-from luandun.config import config
+from luandun.business.magicformula.update_stock_info import UpdateTitleHandler
 
 
 application = tornado.web.Application([
     (r"/magicformula/updatestockinfo", UpdateStockInfoHandler),
     (r"/magicformula/updatemarketcapital", UpdateMarketCapitalHandler),
+    (r"/magicformula/updatetitle", UpdateTitleHandler),
 ])
 
 
 if __name__ == '__main__':
-    config_manager = config.get_config_manager().initialize("magicformula")
-    db.get_cassandra_manager().initialize("magicformula")
+    connection.setup(['127.0.0.1'])
+    sync_table(StockModel)
+    
     application.listen(8888)
     tornado.ioloop.IOLoop.instance().start()

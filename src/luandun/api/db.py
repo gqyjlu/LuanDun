@@ -45,33 +45,3 @@ class CqlQuery(object):
     def __init__(self, cql):
         pass
     
-
-class Model(object):
-    
-    def cql(self, cql):
-        pass
-    
-    @classmethod
-    def get_or_insert(cls, key):
-        print type(cls.__name__)
-        #print self.__class__.__name__
-        #for i in dir(self.__class__):
-        #    print i
-        #for i in dir(self):
-        #    print i
-        #    print isinstance(getattr(self, i), Property)
-      
-    @classmethod      
-    def get(cls, key):
-        pass
-    
-    def put(self):
-        pass
-        
-
-class Property(object):
-    def __init__(self, indexed):
-        pass
-
-class StringProperty(Property):
-    pass
