@@ -9,12 +9,14 @@ Created on 2014年6月24日
 
 
 from HTMLParser import HTMLParser
+import json
 import logging
 import re
 import string
 import urllib
 import tornado.web
 from luandun.api import taskqueue
+from luandun.business.magicformula.exception import MagicFormulaException
 from luandun.business.magicformula.stock import StockModel
 from luandun.exception import LuanDunException
 
@@ -78,6 +80,65 @@ class UpdateMarketCapitalHandler(tornado.web.RequestHandler):
         value = self.__get_market_capital(ticker)
         StockModel.create(ticker=ticker, market_capital=value)
         self.__update_market_capital(ticker, value)
+        taskqueue.add(url=URL_PREFIX + "/magicformula/updatefinancialstatement",
+                      keyspace=KEYSPACE,
+                      method="POST",
+                      params={"ticker":ticker})
+        
+        
+class UpdateFinancialStatementHandler(tornado.web.RequestHandler):
+    
+    def __parse(self, data):
+        m = {}
+        lines = data.split('\n')
+        for line in lines:
+            fields = line.split('\t')
+            for i in range(len(fields) - 2):
+                if i + 1 not in m:
+                    m[i + 1] = {}
+                m[i + 1][fields[0]] = fields[i + 1]
+        results = {}
+        for k in m:
+            if '报表日期' in m[k]:
+                results[m[k]['报表日期']] = m[k]
+        if not results:
+            raise MagicFormulaException('Content is %s' % (data))
+        return results
+    
+    def __get_page_content(self, url):
+        result = urllib.urlopen(url)
+        if 200 == result.getcode():
+            return result.read().decode('GBK').encode('UTF-8')
+        else:
+            raise LuanDunException("http code: " + str(result.getcode()))
+    
+    def __get_balance(self, ticker):
+        url = "http://money.finance.sina.com.cn/corp/go.php/vDOWN_BalanceSheet/displaytype/4/stockid/%s/ctrl/all.phtml" % (ticker)
+        data = self.__get_page_content(url)
+        return self.__parse(data)
+    
+    def __load_balance(self, ticker):
+        value = self.__get_balance(ticker)
+        StockModel.create(ticker=ticker, balance=json.dumps(value))
+    
+    def __get_profit(self, ticker):
+        url = "http://money.finance.sina.com.cn/corp/go.php/vDOWN_ProfitStatement/displaytype/4/stockid/%s/ctrl/all.phtml" % (ticker)
+        data = self.__get_page_content(url)
+        return self.__parse(data)
+    
+    def __load_profit(self, ticker):
+        value = self.__get_profit(ticker)
+        StockModel.create(ticker=ticker, profit=json.dumps(value))
+    
+    def __load_cash(self, ticker):
+        pass
+    
+    def post(self):
+        ticker = self.get_argument("ticker")
+        if StockModel.get(ticker=ticker).market_capital > 0:
+            self.__load_balance(ticker)
+            self.__load_profit(ticker)
+            self.__load_cash(ticker)
         
 
 class EastMoneyHTMLParser(HTMLParser):

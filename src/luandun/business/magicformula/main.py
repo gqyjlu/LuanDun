@@ -17,12 +17,14 @@ from luandun.business.magicformula.stock import StockModel
 from luandun.business.magicformula.update_stock_info import UpdateStockInfoHandler
 from luandun.business.magicformula.update_stock_info import UpdateMarketCapitalHandler
 from luandun.business.magicformula.update_stock_info import UpdateTitleHandler
+from luandun.business.magicformula.update_stock_info import UpdateFinancialStatementHandler
 
 
 application = tornado.web.Application([
     (r"/magicformula/updatestockinfo", UpdateStockInfoHandler),
     (r"/magicformula/updatemarketcapital", UpdateMarketCapitalHandler),
     (r"/magicformula/updatetitle", UpdateTitleHandler),
+    (r"/magicformula/updatefinancialstatement", UpdateFinancialStatementHandler),
 ])
 
 

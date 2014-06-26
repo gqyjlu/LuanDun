@@ -99,7 +99,7 @@ class Worker(object):
     def reserve(self, timeout):
         try:
             return Job(self.beanstalk.reserve(timeout))
-        except SocketError as ae:
+        except SocketError:
             self.beanstalk.reconnect()
             raise TaskQueueConnectionException()
     
@@ -109,7 +109,7 @@ class Worker(object):
                 tubes = self.beanstalk.tubes()
             for tube in tubes:
                 self.beanstalk.watch(tube)
-        except SocketError as ae:
+        except SocketError:
             self.beanstalk.reconnect()
             raise TaskQueueConnectionException()
         
@@ -143,7 +143,7 @@ class Producer(object):
     def put(self, body):
         try:
             self.beanstalk.put(body)
-        except SocketError as se:
+        except SocketError:
             self.beanstalk.reconnect()
             raise TaskQueueConnectionException()
         
