@@ -6,4 +6,4 @@ beanstalkc 0.4.0+
 cqlengine 0.15.4+
 tornado 3.2.1+
 gevent 1.0.1+
-greenlet 0.4.2+
+eventlet 0.14.0+

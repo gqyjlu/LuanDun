@@ -52,12 +52,12 @@ class MagicFormulaStockView(object):
         self.ticker = model.ticker
         self.title = model.title
         self.market_capital = model.market_capital
-        self.earnings_date = m["earnings_date"]
-        self.bank_flag = m["bank_flag"]
+        self.earnings_date = m["earningsDate"]
+        self.bank_flag = m["bankFlag"]
         self.income = m["income"]
-        self.tangible_asset = m["tangible_asset"]
+        self.tangible_asset = m["tangibleAsset"]
         self.ebit = m["ebit"]
-        self.enterprise_value = m["enterprise_value"]
+        self.enterprise_value = m["enterpriseValue"]
     
         
 def cmp_rotc(s1, s2):

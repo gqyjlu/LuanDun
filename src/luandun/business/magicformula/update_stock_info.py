@@ -208,12 +208,12 @@ class UpdateFormulaItemHandler(tornado.web.RequestHandler):
                 #              + string.atof(profit[last_year_date]['归属于母公司的净利润'])
                 #              - string.atof(profit[last_earnings_date]['归属于母公司的净利润']))
             logging.warn("Firstly %s is a bank" % (ticker))
-        item["bank_flag"] = bank_flag
-        item["earnings_date"] = earnings_date.strftime('%Y%m%d')
+        item["bankFlag"] = bank_flag
+        item["earningsDate"] = earnings_date.strftime('%Y%m%d')
         if not bank_flag:
-            item["tangible_asset"] = tangible_asset
+            item["tangibleAsset"] = tangible_asset
             item["income"] = income
-            item["enterprise_value"] = enterprise_value
+            item["enterpriseValue"] = enterprise_value
             item["ebit"] = ebit
         StockModel.create(ticker=ticker, formula_item=json.dumps(item))
         
@@ -368,10 +368,10 @@ class UpdateMagicFormulaResultHandler(tornado.web.RequestHandler):
                 d["ey"] = "%d%%" % (result.ebit * 100 / result.enterprise_value)
             else:
                 d["ey"] = "∞"
-            d["earnings_date"] = result.earnings_date
+            d["earningsDate"] = result.earnings_date
             d["ticker"] = result.ticker
             d["title"] = result.title
-            d["market_capital"] = "%.2f亿" % (result.market_capital / 100000000)
+            d["marketCapital"] = "%.2f亿" % (result.market_capital / 100000000)
             d["rank"] = result.rank
             data.append(d)
         self.__update_formula_result(data)
