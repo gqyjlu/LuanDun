@@ -24,7 +24,13 @@ from luandun.business.magicformula.update_stock_info import UpdateStockInfoHandl
 from luandun.business.magicformula.update_stock_info import UpdateTitleHandler
 
 
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write("Hello, world!")
+
+
 application = tornado.web.Application([
+    (r'/magicformula', MainHandler),
     (r"/magicformula/updatestockinfo", UpdateStockInfoHandler),
     (r"/magicformula/updatemarketcapital", UpdateMarketCapitalHandler),
     (r"/magicformula/updatetitle", UpdateTitleHandler),
