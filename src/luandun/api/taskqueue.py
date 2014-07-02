@@ -30,7 +30,7 @@ worker_manager = None
 worker_manager_lock = threading.Lock()
 
 
-def add(url, keyspace, queue_name=None, method="GET", params=None):
+def add(url, keyspace, queue_name=None, method="GET", params={}):
     body = {}
     body["url"] = url
     body["method"] = method
@@ -73,15 +73,19 @@ class Job(object):
         self.job.release()
         
     def execute(self):
-        url = self.body["url"]
-        params = urllib.urlencode(self.body["params"])
-        result = None
-        if self.body["method"] == "POST":
-            result = urllib.urlopen(url, params)
-        else:
-            result = urllib.urlopen(url + "?" + params)
-        if 200 != result.getcode():
-            raise LuanDunException("Failure of Job")
+        try:
+            url = self.body["url"]
+            params = urllib.urlencode(self.body["params"])
+            result = None
+            if self.body["method"] == "POST":
+                result = urllib.urlopen(url, params)
+            else:
+                result = urllib.urlopen(url + "?" + params)
+            if 200 != result.getcode():
+                raise LuanDunException("Failure of Job")
+        except IOError as ioe:
+            logging.warn("body: " + repr(self.body))
+            raise ioe
         
     def __str__(self):
         url = self.body["url"]

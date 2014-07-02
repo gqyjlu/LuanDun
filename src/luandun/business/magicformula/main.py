@@ -13,14 +13,20 @@ from cqlengine.management import sync_table
 import tornado.ioloop
 import tornado.web
 
-from luandun.business.magicformula.show_stock_info import ShowMagicFormulaResultHandler
-from luandun.business.magicformula.stock import FormulaResult
-from luandun.business.magicformula.stock import StockModel
-from luandun.business.magicformula.update_stock_info import UpdateFinancialStatementHandler
-from luandun.business.magicformula.update_stock_info import UpdateFormulaItemHandler
-from luandun.business.magicformula.update_stock_info import UpdateMagicFormulaResultHandler
+from luandun.business.magicformula.gdp import GDP
+from luandun.business.magicformula.gdp import UpdateGDPHandler
+from luandun.business.magicformula.show_stock_info import ShowGrahamFormulaHandler
+from luandun.business.magicformula.show_stock_info import ShowMagicFormulaHandler
+from luandun.business.magicformula.show_stock_info import ShowNetCurrentAssetApproachHandler
+from luandun.business.magicformula.show_stock_info import UpdateGrahamFormulaHandler
+from luandun.business.magicformula.show_stock_info import UpdateMagicFormulaHandler
+from luandun.business.magicformula.show_stock_info import UpdateNetCurrentAssetApproachHandler
+from luandun.business.magicformula.stock import Stock
+from luandun.business.magicformula.stock_result import StockResult
+from luandun.business.magicformula.update_stock_info import UpdateEarningsHandler
 from luandun.business.magicformula.update_stock_info import UpdateMarketCapitalHandler
 from luandun.business.magicformula.update_stock_info import UpdateStockInfoHandler
+from luandun.business.magicformula.update_stock_info import UpdateStockListHandler
 from luandun.business.magicformula.update_stock_info import UpdateTitleHandler
 
 
@@ -31,20 +37,27 @@ class MainHandler(tornado.web.RequestHandler):
 
 application = tornado.web.Application([
     (r'/magicformula', MainHandler),
+    (r"/magicformula/updategdp", UpdateGDPHandler),
     (r"/magicformula/updatestockinfo", UpdateStockInfoHandler),
+    (r"/magicformula/updatestocklist", UpdateStockListHandler),
     (r"/magicformula/updatemarketcapital", UpdateMarketCapitalHandler),
+    (r"/magicformula/updateearnings", UpdateEarningsHandler),
     (r"/magicformula/updatetitle", UpdateTitleHandler),
-    (r"/magicformula/updatefinancialstatement", UpdateFinancialStatementHandler),
-    (r"/magicformula/updateformulaitem", UpdateFormulaItemHandler),
-    (r"/magicformula/updatemagicformularesult", UpdateMagicFormulaResultHandler),
-    (r"/magicformula/showmagicformularesult", ShowMagicFormulaResultHandler),
+    (r"/magicformula/updatemagicformula", UpdateMagicFormulaHandler),
+    (r"/magicformula/updategrahamformula", UpdateGrahamFormulaHandler),
+    (r"/magicformula/updatenetcurrentassetapproach", UpdateNetCurrentAssetApproachHandler),
+    (r"/magicformula/showmagicformula", ShowMagicFormulaHandler),
+    (r"/magicformula/showgrahamformula", ShowGrahamFormulaHandler),
+    (r"/magicformula/shownetcurrentassetapproach", ShowNetCurrentAssetApproachHandler),
+
 ])
 
 
 if __name__ == '__main__':
     connection.setup(['127.0.0.1'])
-    sync_table(StockModel)
-    sync_table(FormulaResult)
+    sync_table(Stock)
+    sync_table(GDP)
+    sync_table(StockResult)
     
     application.listen(8888)
     tornado.ioloop.IOLoop.instance().start()
