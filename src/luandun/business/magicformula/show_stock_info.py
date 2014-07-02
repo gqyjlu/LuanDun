@@ -94,9 +94,7 @@ class UpdateNetCurrentAssetApproachHandler(tornado.web.RequestHandler):
 class UpdateGrahamFormulaHandler(tornado.web.RequestHandler):
     
     def __filter(self, stocks):
-        content = []
         results = []
-        miss = []
         p = 0.0
         b = 0.0
         net_profit = 0.0
