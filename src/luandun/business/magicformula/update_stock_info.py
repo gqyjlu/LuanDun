@@ -28,7 +28,7 @@ from luandun.exception import LuanDunException
 
 
 #ToDo 改成配置
-URL_PREFIX="http://magicformula"
+URL_PREFIX="http://zhengqianhua.mouwuming.com"
 KEYSPACE="magicformula"
 
 
