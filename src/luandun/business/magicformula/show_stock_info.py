@@ -15,19 +15,19 @@ import stock_result
 class ShowNetCurrentAssetApproachHandler(tornado.web.RequestHandler):
     def get(self):
         entry = stock_result.get_html('netcurrentassetapproach')
-        self.response.write(entry.content)
+        self.write(entry.content)
     
     
 class ShowGrahamFormulaHandler(tornado.web.RequestHandler):
     def get(self):
         entry = stock_result.get_html('grahamformula')
-        self.response.write(entry.content)
+        self.write(entry.content)
         
         
 class ShowMagicFormulaHandler(tornado.web.RequestHandler):
     def get(self):
         entry = stock_result.get_html('magicformula')
-        self.response.write(entry.content)
+        self.write(entry.content)
         
         
 class UpdateNetCurrentAssetApproachHandler(tornado.web.RequestHandler):
