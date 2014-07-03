@@ -279,7 +279,7 @@ class UpdateMagicFormulaHandler(tornado.web.RequestHandler):
         
     def __generate_json(self, stocks):
         results = []
-        for stock in stocks[0 : 50]:
+        for stock in stocks[0 : 30]:
             result = {}
             result['rank'] = stock.rank
             result['ticker'] = stock.ticker
