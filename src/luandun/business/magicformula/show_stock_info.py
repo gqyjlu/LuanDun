@@ -26,7 +26,8 @@ class ShowGrahamFormulaHandler(tornado.web.RequestHandler):
         
 class ShowMagicFormulaHandler(tornado.web.RequestHandler):
     def get(self):
-        entry = stock_result.get_html('magicformula')
+        entry = stock_result.get_json('magicformula')
+        self.set_header("Access-Control-Allow-Origin", "*")
         self.write(entry.content)
         
         
