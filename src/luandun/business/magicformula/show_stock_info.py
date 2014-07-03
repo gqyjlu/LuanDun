@@ -282,9 +282,9 @@ class UpdateMagicFormulaHandler(tornado.web.RequestHandler):
         for stock in stocks[0 : 50]:
             result = {}
             result['rank'] = stock.rank
-            result['code'] = stock.ticker
-            result['name'] = stock.title
-            result['marketCap'] = stock.market_capital
+            result['ticker'] = stock.ticker
+            result['title'] = stock.title
+            result['marketCapital'] = stock.market_capital
             result['rotc'] = stock.roic
             result['rotcRank'] = stock.roic_rank
             result['ey'] = stock.ebit_ev
