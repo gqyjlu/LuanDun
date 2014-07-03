@@ -74,8 +74,7 @@ class GDP(Model):
     
 
 def get():
-    entry = GDP.create(key='gdp')
-    return entry
+    return GDP.get(key='gdp')
 
 
 def put(entry):
