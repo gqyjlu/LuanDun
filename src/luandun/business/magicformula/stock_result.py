@@ -13,14 +13,14 @@ class StockResult(Model):
     
 def get_html(ticker):
     key = 'html' + ticker
-    return StockResult.create(key=key)
+    return StockResult.get(key=key)
         
 def set_html(ticker, entry):
     entry.save()
 
 def get_json(ticker):
     key = 'json' + ticker
-    return StockResult.create(key=key)
+    return StockResult.get(key=key)
         
 def set_json(ticker, entry):
     entry.save()
