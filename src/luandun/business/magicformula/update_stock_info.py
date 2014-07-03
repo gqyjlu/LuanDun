@@ -46,7 +46,7 @@ class UpdateMarketCapitalHandler(tornado.web.RequestHandler):
         result = urllib.urlopen("http://qt.gtimg.cn/S?q=" + query)
         if 200 == result.getcode():
             data = result.read().split("~")
-            if len(data) < 5:
+            if len(data) < 5 or not data[len(data) - 5]:
                 logging.warn("There is no market capital for %s" % (ticker))
                 return -1.0
             logging.info('The market capital of %s is %s' % (ticker, data[len(data) - 5]))
