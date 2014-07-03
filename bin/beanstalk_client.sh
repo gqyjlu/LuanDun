@@ -1,5 +1,5 @@
 #!/bin/bash
 
-#export PYTHONPATH=/Users/prstcsnpr/git/LuanDun/src
+. env.sh
 
-cd ../src/luandun/tools/ && python beanstalk_client.py
+cd $LUANDUN_HOME/src/luandun/tools/ && python beanstalk_client.py

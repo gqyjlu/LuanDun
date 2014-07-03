@@ -1,5 +1,5 @@
 #!/bin/bash
 
-nohup beanstalkd -l 127.0.0.1 -p 11300 -b ../data/beanstalkd -f0 > ../log/beanstalkd/beanstalkd.out 2> ../log/beanstalkd/beanstalkd.err &
+. env.sh
 
-#echo $! > beanstalkd.pid
+nohup beanstalkd -l 127.0.0.1 -p 11300 -b $LUANDUN_HOME/data/beanstalkd -f0 > $LUANDUN_HOME/log/beanstalkd/beanstalkd.out 2> $LUANDUN_HOME/log/beanstalkd/beanstalkd.err &

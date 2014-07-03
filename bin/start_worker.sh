@@ -2,4 +2,4 @@
 
 . env.sh
 
-cd ../src/luandun/tools/ && python worker.py -t magicformula
+cd $LUANDUN_HOME/src/luandun/tools/ && python worker.py -t magicformula

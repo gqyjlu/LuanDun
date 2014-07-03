@@ -2,4 +2,4 @@
 
 . env.sh
 
-cassandra -f
+cassandra
