@@ -46,10 +46,10 @@ class UpdateMarketCapitalHandler(tornado.web.RequestHandler):
         result = urllib.urlopen("http://qt.gtimg.cn/S?q=" + query)
         if 200 == result.getcode():
             data = result.read().split("~")
-            logging.info('The market capital of %s is %s' % (ticker, data[len(data) - 5]))
-            if not data[len(data) - 5]:
+            if len(data) < 5:
                 logging.warn("There is no market capital for %s" % (ticker))
                 return -1.0
+            logging.info('The market capital of %s is %s' % (ticker, data[len(data) - 5]))
             value = string.atof(data[len(data) - 5]) * 100000000
             if not value:
                 logging.warn("The market capital of %s is 0" % (ticker))
@@ -353,3 +353,4 @@ class UpdateEarningsHandler(tornado.web.RequestHandler):
     def post(self):
         ticker = self.get_argument('ticker')
         self.__update_earnings(ticker)
+        
