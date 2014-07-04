@@ -10,3 +10,4 @@ Dependency:
 	PyYAML 3.11+
 	beanstalkd 0.15.4+
 	greenlet 0.4.2+
+	cronolog 1.6.2+

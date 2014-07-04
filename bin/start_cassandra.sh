@@ -2,4 +2,4 @@
 
 . env.sh
 
-cassandra > $LUANDUN_HOME/log/cassandra/stdout.log 2> $LUANDUN_HOME/log/cassandra/stderr.log
+cassandra 2>&1 | cronolog $LUANDUN_HOME/log/cassandra/cassandra.%Y%m%d.log
