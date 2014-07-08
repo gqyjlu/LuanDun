@@ -13,15 +13,15 @@ from HTMLParser import HTMLParser
 import logging
 import re
 import string
-import urllib
 
+from tornado import gen
+from tornado import httpclient
 import tornado.web
 
 from luandun.api import taskqueue
 from luandun.business.magicformula import constant
 from luandun.business.magicformula import stock
 from luandun.business.magicformula.stock import Stock
-from luandun.exception import LuanDunException
 
 
 class UpdateTitleHandler(tornado.web.RequestHandler):
@@ -38,31 +38,27 @@ class UpdateTitleHandler(tornado.web.RequestHandler):
 
 class UpdateMarketCapitalHandler(tornado.web.RequestHandler):
     
-    def __get_market_capital(self, ticker):
+    def __get_market_capital(self, ticker, body):
+        data = body.split("~")
+        if len(data) < 5 or not data[len(data) - 5]:
+            logging.warn("There is no market capital for %s" % (ticker))
+            return -1.0
+        logging.info('The market capital of %s is %s' % (ticker, data[len(data) - 5]))
+        value = string.atof(data[len(data) - 5]) * 100000000
+        if not value:
+            logging.warn("The market capital of %s is 0" % (ticker))
+        return value
+        
+    @gen.coroutine
+    def post(self):
+        ticker = self.get_argument("ticker")
         if ticker[0] == "6":
             query = "sh" + ticker
         else:
             query = "sz" + ticker
-        result = urllib.urlopen("http://qt.gtimg.cn/S?q=" + query)
-        if 200 == result.getcode():
-            data = result.read().split("~")
-            if len(data) < 5 or not data[len(data) - 5]:
-                logging.warn("There is no market capital for %s" % (ticker))
-                return -1.0
-            logging.info('The market capital of %s is %s' % (ticker, data[len(data) - 5]))
-            value = string.atof(data[len(data) - 5]) * 100000000
-            if not value:
-                logging.warn("The market capital of %s is 0" % (ticker))
-            return value
-        else:
-            raise LuanDunException("http code: " + str(result.getcode()))
-        
-    def __update_market_capital(self, ticker, value):
-        Stock.create(ticker=ticker, market_capital=value)
-    
-    def post(self):
-        ticker = self.get_argument("ticker")
-        value = self.__get_market_capital(ticker)
+        client = httpclient.AsyncHTTPClient()
+        response = yield client.fetch("http://qt.gtimg.cn/S?q=" + query)
+        value = self.__get_market_capital(ticker, response.body)
         Stock.create(ticker=ticker, market_capital=value)
         if value > 0:
             taskqueue.add(url=constant.URL_PREFIX + "/magicformula/updateearnings",
@@ -118,50 +114,35 @@ class UpdateStockInfoHandler(tornado.web.RequestHandler):
         
 class UpdateStockListHandler(tornado.web.RequestHandler):
     
+    @gen.coroutine
     def post(self):
-        result = urllib.urlopen("http://quote.eastmoney.com/stocklist.html")
-        if 200 == result.getcode():
-            data = result.read().decode("GBK").encode("UTF-8")
-            parser = EastMoneyHTMLParser()
-            parser.feed(data)
-            parser.close()
+        client = httpclient.AsyncHTTPClient()
+        response = yield client.fetch("http://quote.eastmoney.com/stocklist.html")
+        data = response.body.decode("GBK").encode("UTF-8")
+        parser = EastMoneyHTMLParser()
+        parser.feed(data)
+        parser.close()
         
 
 class UpdateEarningsHandler(tornado.web.RequestHandler):
     
-    def __get_page_content(self, url):
-        result = urllib.urlopen(url=url)
-        if result.getcode() == 200:
-            data = result.read()
-            mp = {}
-            lines = data.decode('GBK').encode('UTF-8').split('\n')
-            for line in lines:
-                fields = line.split('\t')
-                for i in range(len(fields) - 2):
-                    if i + 1 not in mp:
-                        mp[i + 1] = {}
-                    mp[i + 1][fields[0]] = fields[i + 1]
-            results = {}
-            for k in mp:
-                if '报表日期' in mp[k]:
-                    results[mp[k]['报表日期']] = mp[k]
-            if not results:
-                raise BlankEarnings('Content is %s %s' % (result.read(), result.headers))
-            return results
-        else:
-            logging.warn('Get Page Content Failure For %s' % (result.getcode()))
-    
-    def __get_profit_earnings(self, ticker):
-        url = "http://money.finance.sina.com.cn/corp/go.php/vDOWN_ProfitStatement/displaytype/4/stockid/%s/ctrl/all.phtml" % (ticker)
-        try:
-            return self.__get_page_content(url)
-        except BlankEarnings as be:
-            print ticker
-            raise be
-    
-    def __get_balance_earnings(self, ticker):
-        url = "http://money.finance.sina.com.cn/corp/go.php/vDOWN_BalanceSheet/displaytype/4/stockid/%s/ctrl/all.phtml" % (ticker)
-        return self.__get_page_content(url)
+    def __get_page_content(self, body):
+        data = body
+        mp = {}
+        lines = data.decode('GBK').encode('UTF-8').split('\n')
+        for line in lines:
+            fields = line.split('\t')
+            for i in range(len(fields) - 2):
+                if i + 1 not in mp:
+                    mp[i + 1] = {}
+                mp[i + 1][fields[0]] = fields[i + 1]
+        results = {}
+        for k in mp:
+            if '报表日期' in mp[k]:
+                results[mp[k]['报表日期']] = mp[k]
+        if not results:
+            raise BlankEarnings('Content is %s' % (body))
+        return results
     
     def __get_ebit(self, profit):
         income_from_main = string.atof(profit['营业收入'])
@@ -244,10 +225,10 @@ class UpdateEarningsHandler(tornado.web.RequestHandler):
         current_assets = string.atof(balance['流动资产合计'])
         return current_assets
         
-    def __update_earnings(self, ticker):
+    def __update_earnings(self, ticker, balance_body, profit_body):
         entry = stock.get(ticker)
-        balance = self.__get_balance_earnings(ticker)
-        profit = self.__get_profit_earnings(ticker)
+        balance = self.__get_page_content(balance_body)
+        profit = self.__get_page_content(profit_body)
         year = datetime.date.today().year
         for i in range(3):
             earnings_date = self.__get_recent_earnings_date(year - i, balance, profit)
@@ -350,7 +331,15 @@ class UpdateEarningsHandler(tornado.web.RequestHandler):
         else:
             return None
             
+    @gen.coroutine
     def post(self):
         ticker = self.get_argument('ticker')
-        self.__update_earnings(ticker)
+        client = httpclient.AsyncHTTPClient()
+        url = "http://money.finance.sina.com.cn/corp/go.php/vDOWN_BalanceSheet/displaytype/4/stockid/%s/ctrl/all.phtml" % (ticker)
+        response = yield client.fetch(url)
+        balance_body = response.body
+        url = "http://money.finance.sina.com.cn/corp/go.php/vDOWN_ProfitStatement/displaytype/4/stockid/%s/ctrl/all.phtml" % (ticker)
+        response = yield client.fetch(url)
+        profit_body = response.body
+        self.__update_earnings(ticker, balance_body, profit_body)
         

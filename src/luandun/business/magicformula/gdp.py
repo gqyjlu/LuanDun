@@ -12,10 +12,11 @@ import datetime
 from HTMLParser import HTMLParser
 import logging
 import string
-import urllib
 
 from cqlengine import columns
 from cqlengine.models import Model
+from tornado import gen
+from tornado import httpclient
 import tornado.web
 
 from luandun.api import taskqueue
@@ -103,38 +104,40 @@ class UpdateGDPHandler(tornado.web.RequestHandler):
         else:
             return None
     
-    def __get_gdp(self):
-        url = "http://data.eastmoney.com/cjsj/gdp.html"
-        result = urllib.urlopen(url=url)
-        if result.getcode() == 200:
-            parser = GDPHTMLParser()
-            parser.feed(result.read().decode('GBK').encode('UTF-8'))
-            for i in range(2):
-                recent_gdp_date = self.__get_recent_gdp_date(datetime.date.today().year - i, parser.map)
-                if recent_gdp_date is not None:
-                    break
-            if recent_gdp_date is None:
-                logging.warn('There is no gdp date')
-                return
-            if recent_gdp_date.month == 12:
-                this_gdp_date = recent_gdp_date.strftime('%Y%m%d')
-                return (string.atof(parser.map[this_gdp_date]) * 100000000, recent_gdp_date)
-            else:
-                this_gdp_date = recent_gdp_date.strftime('%Y%m%d')
-                last_gdp_date = recent_gdp_date.replace(recent_gdp_date.year - 1).strftime('%Y%m%d')
-                last_year_date = datetime.date(recent_gdp_date.year - 1, 12, 31).strftime('%Y%m%d')
-                return ((string.atof(parser.map[this_gdp_date])
-                        + string.atof(parser.map[last_year_date])
-                        - string.atof(parser.map[last_gdp_date]))
-                        * 100000000, recent_gdp_date)
-            
+    def __get_gdp(self, body):
+        parser = GDPHTMLParser()
+        parser.feed(body.decode('GBK').encode('UTF-8'))
+        for i in range(2):
+            recent_gdp_date = self.__get_recent_gdp_date(datetime.date.today().year - i, parser.map)
+            if recent_gdp_date is not None:
+                break
+        if recent_gdp_date is None:
+            logging.warn('There is no gdp date')
+            return
+        if recent_gdp_date.month == 12:
+            this_gdp_date = recent_gdp_date.strftime('%Y%m%d')
+            return (string.atof(parser.map[this_gdp_date]) * 100000000, recent_gdp_date)
+        else:
+            this_gdp_date = recent_gdp_date.strftime('%Y%m%d')
+            last_gdp_date = recent_gdp_date.replace(recent_gdp_date.year - 1).strftime('%Y%m%d')
+            last_year_date = datetime.date(recent_gdp_date.year - 1, 12, 31).strftime('%Y%m%d')
+            return ((string.atof(parser.map[this_gdp_date])
+                    + string.atof(parser.map[last_year_date])
+                    - string.atof(parser.map[last_gdp_date]))
+                    * 100000000, recent_gdp_date)
+    
+    @gen.coroutine    
     def get(self):
         try:
-            value, date = self.__get_gdp()
-            entry = get()
-            entry.value = value
-            entry.date = date
-            put(entry)
+            url = "http://data.eastmoney.com/cjsj/gdp.html"
+            client = httpclient.AsyncHTTPClient()
+            response = yield client.fetch(url)
+            if response.code == 200:
+                value, date = self.__get_gdp(response.body)
+                entry = get()
+                entry.value = value
+                entry.date = date
+                put(entry)
         except Exception as e:
             logging.exception(e)
             taskqueue.add(url='/tasks/updategdp',
