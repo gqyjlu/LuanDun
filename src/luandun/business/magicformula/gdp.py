@@ -142,4 +142,4 @@ class UpdateGDPHandler(tornado.web.RequestHandler):
             logging.exception(e)
             taskqueue.add(url='/tasks/updategdp',
                           queue_name='updategdp',
-                          method='GET')
+                          method='POST')

@@ -33,7 +33,7 @@ class ShowMagicFormulaHandler(tornado.web.RequestHandler):
         
 class UpdateNetCurrentAssetApproachHandler(tornado.web.RequestHandler):
     
-    def get(self):
+    def post(self):
         values = {}
         stocks = stock.Stock.all()
         stocks, pb, pe, roe, mc_gdp = self.__filter(stocks)
@@ -136,7 +136,7 @@ class UpdateGrahamFormulaHandler(tornado.web.RequestHandler):
         receiver="prstcsnpr@gmail.com"
         logging.info('Mail result for grahamformula to %s' % (receiver))
             
-    def get(self):
+    def post(self):
         values = {}
         stocks = stock.Stock.all()
         stocks, pb, pe, roe, mc_gdp = self.__filter(stocks)
@@ -257,7 +257,7 @@ class UpdateMagicFormulaHandler(tornado.web.RequestHandler):
             results[i].format()
         return results
     
-    def get(self):
+    def post(self):
         values = {}
         stocks = stock.Stock.all()
         stocks, pb, pe, roe, mc_gdp = self.__filter(stocks)

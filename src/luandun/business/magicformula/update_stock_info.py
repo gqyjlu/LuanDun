@@ -106,7 +106,7 @@ class BlankEarnings(Exception):
 
 class UpdateStockInfoHandler(tornado.web.RequestHandler):
     
-    def get(self):
+    def post(self):
         taskqueue.add(url=constant.URL_PREFIX + '/magicformula/updatestocklist',
                       keyspace=constant.KEYSPACE,
                       method='POST')
