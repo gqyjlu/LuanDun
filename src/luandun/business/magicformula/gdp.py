@@ -127,7 +127,7 @@ class UpdateGDPHandler(tornado.web.RequestHandler):
                     * 100000000, recent_gdp_date)
     
     @gen.coroutine    
-    def get(self):
+    def post(self):
         try:
             url = "http://data.eastmoney.com/cjsj/gdp.html"
             client = httpclient.AsyncHTTPClient()
