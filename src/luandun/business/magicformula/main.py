@@ -22,6 +22,9 @@ from luandun.business.magicformula.show_stock_info import UpdateGrahamFormulaHan
 from luandun.business.magicformula.show_stock_info import UpdateMagicFormulaHandler
 from luandun.business.magicformula.show_stock_info import UpdateNetCurrentAssetApproachHandler
 from luandun.business.magicformula.stock import Stock
+from luandun.business.magicformula.stock import StockEarnings
+from luandun.business.magicformula.stock import StockMarketCapital
+from luandun.business.magicformula.stock import StockTitle
 from luandun.business.magicformula.stock_result import StockResult
 from luandun.business.magicformula.update_stock_info import UpdateEarningsHandler
 from luandun.business.magicformula.update_stock_info import UpdateMarketCapitalHandler
@@ -57,6 +60,9 @@ if __name__ == '__main__':
     sync_table(Stock)
     sync_table(GDP)
     sync_table(StockResult)
+    sync_table(StockTitle)
+    sync_table(StockMarketCapital)
+    sync_table(StockEarnings)
     
     application.listen(8888)
     tornado.ioloop.IOLoop.instance().start()

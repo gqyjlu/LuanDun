@@ -33,6 +33,29 @@ class Stock(Model):
     category = columns.Text()
     subcategory = columns.Text()
     
+
+class StockTitle(Model):
+    __keyspace__ = "magicformula"
+    __table_name__ = "stock_title"
+    ticker = columns.Text(primary_key=True)
+    title = columns.Text()
+    
+    
+class StockMarketCapital(Model):
+    __keyspace__ = "magicformula"
+    __table_name__ = "stock_market_capital"
+    ticker = columns.Text(primary_key=True)
+    market_capital = columns.Float()
+    
+    
+class StockEarnings(Model):
+    __keyspace__ = "magicformula"
+    __table_name__ = "stock_earnings"
+    ticker = columns.Text(primary_key=True)
+    balance = columns.Text()
+    profit = columns.Text()
+    cash = columns.Text()
+    
     
 class NetCurrentAssetApproachStockView(object):
     

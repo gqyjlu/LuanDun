@@ -10,6 +10,7 @@ Created on 2014年6月24日
 
 import datetime
 from HTMLParser import HTMLParser
+import json
 import logging
 import re
 import string
@@ -22,6 +23,9 @@ from luandun.api import taskqueue
 from luandun.business.magicformula import constant
 from luandun.business.magicformula import stock
 from luandun.business.magicformula.stock import Stock
+from luandun.business.magicformula.stock import StockEarnings
+from luandun.business.magicformula.stock import StockMarketCapital
+from luandun.business.magicformula.stock import StockTitle
 
 
 class UpdateTitleHandler(tornado.web.RequestHandler):
@@ -30,6 +34,7 @@ class UpdateTitleHandler(tornado.web.RequestHandler):
         ticker = self.get_argument("ticker")
         title = self.get_argument("title")
         Stock.create(ticker=ticker, title=title)
+        StockTitle.create(ticker=ticker, title=title)
         taskqueue.add(url=constant.URL_PREFIX + "/magicformula/updatemarketcapital",
                       keyspace=constant.KEYSPACE, 
                       method="POST", 
@@ -60,6 +65,7 @@ class UpdateMarketCapitalHandler(tornado.web.RequestHandler):
         response = yield client.fetch("http://qt.gtimg.cn/S?q=" + query)
         value = self.__get_market_capital(ticker, response.body)
         Stock.create(ticker=ticker, market_capital=value)
+        StockMarketCapital.create(ticker=ticker, market_capital=value)
         if value > 0:
             taskqueue.add(url=constant.URL_PREFIX + "/magicformula/updateearnings",
                           keyspace=constant.KEYSPACE,
@@ -140,6 +146,8 @@ class UpdateEarningsHandler(tornado.web.RequestHandler):
         for k in mp:
             if '报表日期' in mp[k]:
                 results[mp[k]['报表日期']] = mp[k]
+            elif '报告期' in mp[k]:
+                results[mp[k]['报告期']] = mp[k]
         if not results:
             raise BlankEarnings('Content is %s' % (body))
         return results
@@ -225,10 +233,8 @@ class UpdateEarningsHandler(tornado.web.RequestHandler):
         current_assets = string.atof(balance['流动资产合计'])
         return current_assets
         
-    def __update_earnings(self, ticker, balance_body, profit_body):
+    def __update_earnings(self, ticker, balance, profit):
         entry = stock.get(ticker)
-        balance = self.__get_page_content(balance_body)
-        profit = self.__get_page_content(profit_body)
         year = datetime.date.today().year
         for i in range(3):
             earnings_date = self.__get_recent_earnings_date(year - i, balance, profit)
@@ -330,10 +336,11 @@ class UpdateEarningsHandler(tornado.web.RequestHandler):
                 return None
         else:
             return None
-            
+        
     @gen.coroutine
     def post(self):
         ticker = self.get_argument('ticker')
+        
         client = httpclient.AsyncHTTPClient()
         url = "http://money.finance.sina.com.cn/corp/go.php/vDOWN_BalanceSheet/displaytype/4/stockid/%s/ctrl/all.phtml" % (ticker)
         response = yield client.fetch(url)
@@ -341,5 +348,16 @@ class UpdateEarningsHandler(tornado.web.RequestHandler):
         url = "http://money.finance.sina.com.cn/corp/go.php/vDOWN_ProfitStatement/displaytype/4/stockid/%s/ctrl/all.phtml" % (ticker)
         response = yield client.fetch(url)
         profit_body = response.body
-        self.__update_earnings(ticker, balance_body, profit_body)
+        url = "http://money.finance.sina.com.cn/corp/go.php/vDOWN_CashFlow/displaytype/4/stockid/%s/ctrl/all.phtml" % (ticker)
+        response = yield client.fetch(url)
+        cash_body = response.body
+        
+        balance = self.__get_page_content(balance_body)
+        profit = self.__get_page_content(profit_body)
+        cash = self.__get_page_content(cash_body)
+        StockEarnings.create(ticker=ticker, balance=json.dumps(balance))
+        StockEarnings.create(ticker=ticker, profit=json.dumps(profit))
+        StockEarnings.create(ticker=ticker, cash=json.dumps(cash))
+        
+        self.__update_earnings(ticker, balance, profit)
         
