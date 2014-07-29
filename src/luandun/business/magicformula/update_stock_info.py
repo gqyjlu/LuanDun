@@ -414,11 +414,11 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             year = last_year - i
             k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
             item = []
-            item[0] = year
+            item.append(year)
             if k in balance and k in profit:
-                item[1] = self.__get_rotc(balance[k], profit[k])
+                item.append(self.__get_rotc(balance[k], profit[k]))
             else:
-                item[1] = "-"
+                item.append("-")
             result.append(item)
         return result
     
