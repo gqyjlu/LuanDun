@@ -62,7 +62,8 @@ class StockData(Model):
     __keyspace__ = "magicformula"
     __table_name__ = "stock_data"
     ticker = columns.Text(primary_key=True)
-    data = columns.Text()
+    model = columns.Text()
+    view = columns.Text()
     
     
 class NetCurrentAssetApproachStockView(object):
