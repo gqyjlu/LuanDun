@@ -406,17 +406,20 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             return "%d%%" % (income * 100 / tangible_asset)
     
     def __get_rotc_list(self, earnings):
-        result = {}
+        result = []
         last_year = datetime.date.today().year - 1
         balance = json.loads(earnings.balance)
         profit = json.loads(earnings.profit)
         for i in range(10):
             year = last_year - i
             k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
+            item = []
+            item[0] = year
             if k in balance and k in profit:
-                result[str(year)] = self.__get_rotc(balance[k], profit[k])
+                item[1] = self.__get_rotc(balance[k], profit[k])
             else:
-                result[str(year)] = "-"
+                item[1] = "-"
+            result.append(item)
         return result
     
     def post(self):
