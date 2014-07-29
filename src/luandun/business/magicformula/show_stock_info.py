@@ -17,7 +17,7 @@ class ShowStockDataHandler(tornado.web.RequestHandler):
     
     def get(self):
         ticker = self.get_argument("ticker")
-        return self.__generate_json(StockData.get(ticker=ticker).data)
+        self.write(self.__generate_json(StockData.get(ticker=ticker).data))
         
     
     def __generate_json(self, data):
