@@ -424,5 +424,5 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         earnings = StockEarnings.get(ticker=ticker)
         data = {}
         if not earnings.bank_flag:
-            data["annual_rotc"] = self.__get_rotc_list(earnings)
+            data["annualRotc"] = self.__get_rotc_list(earnings)
             StockData.create(ticker=ticker, data=json.dumps(data))

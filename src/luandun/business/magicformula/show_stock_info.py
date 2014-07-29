@@ -10,6 +10,7 @@ import tornado.web
 from luandun.business.magicformula import gdp
 from luandun.business.magicformula import stock
 from luandun.business.magicformula.stock import StockData
+from luandun.business.magicformula.stock import StockTitle
 from luandun.business.magicformula import stock_result
 
 
@@ -17,7 +18,10 @@ class ShowStockDataHandler(tornado.web.RequestHandler):
     
     def get(self):
         ticker = self.get_argument("ticker")
-        self.write(self.__generate_json(StockData.get(ticker=ticker).data))
+        title = StockTitle.get(ticker=ticker).title
+        data = StockData.get(ticker=ticker).data
+        data["title"] = title
+        self.write(self.__generate_json(data))
         
     
     def __generate_json(self, data):
