@@ -23,6 +23,7 @@ from luandun.api import taskqueue
 from luandun.business.magicformula import constant
 from luandun.business.magicformula import stock
 from luandun.business.magicformula.stock import Stock
+from luandun.business.magicformula.stock import StockData
 from luandun.business.magicformula.stock import StockEarnings
 from luandun.business.magicformula.stock import StockMarketCapital
 from luandun.business.magicformula.stock import StockTitle
@@ -352,12 +353,76 @@ class UpdateEarningsHandler(tornado.web.RequestHandler):
         response = yield client.fetch(url)
         cash_body = response.body
         
+        if cash_body.find("报告期".encode("GBK")) < 0:
+            bank_flag = True
+        else:
+            bank_flag = False
         balance = self.__get_page_content(balance_body)
         profit = self.__get_page_content(profit_body)
         cash = self.__get_page_content(cash_body)
-        StockEarnings.create(ticker=ticker, balance=json.dumps(balance))
-        StockEarnings.create(ticker=ticker, profit=json.dumps(profit))
-        StockEarnings.create(ticker=ticker, cash=json.dumps(cash))
+        StockEarnings.create(ticker=ticker, bank_flag=bank_flag, balance=json.dumps(balance), profit=json.dumps(profit), cash=json.dumps(cash))
+        
+        taskqueue.add(url=constant.URL_PREFIX + "/magicformula/updatedata",
+                      keyspace=constant.KEYSPACE, 
+                      method="POST", 
+                      params={"ticker":ticker})
         
         self.__update_earnings(ticker, balance, profit)
         
+
+class UpdateDataHandler(tornado.web.RequestHandler):
+    
+    def __get_rotc(self, balance, profit):
+        
+        income_from_main = string.atof(profit[u'营业收入'])
+        cost_of_main_operation = string.atof(profit[u'营业成本'])
+        tax_and_additional_expense = string.atof(profit[u'营业税金及附加'])
+        general_and_administrative_expense = string.atof(profit[u'管理费用'])
+        sales_expenses = string.atof(profit[u'销售费用'])
+        income = (income_from_main - cost_of_main_operation - tax_and_additional_expense - general_and_administrative_expense - sales_expenses)
+
+        current_asset = string.atof(balance[u'流动资产合计'])
+        current_liabilities = string.atof(balance[u'流动负债合计'])
+        short_term_loans = string.atof(balance[u'短期借款'])
+        notes_payable = string.atof(balance[u'应付票据'])
+        a_maturity_of_non_current_liabilities = string.atof(balance[u'一年内到期的非流动负债'])
+        cope_with_short_term_bond = string.atof(balance[u'应付短期债券'])
+        fixed_assets_net_value = string.atof(balance[u'固定资产净值'])
+        investment_real_estate = string.atof(balance[u'投资性房地产'])
+        monetary_fund = string.atof(balance[u'货币资金'])
+        transactional_financial_assets = string.atof(balance[u'交易性金融资产'])
+        
+        excess_cash = max(0, (monetary_fund + transactional_financial_assets) - max(0, current_liabilities - (current_asset - (monetary_fund + transactional_financial_assets))))
+        
+        tangible_asset = (current_asset - current_liabilities
+                          + short_term_loans + notes_payable
+                          + a_maturity_of_non_current_liabilities
+                          + cope_with_short_term_bond + fixed_assets_net_value
+                          + investment_real_estate - excess_cash)
+        
+        if tangible_asset == 0:
+            return "∞"
+        else:
+            return "%d%%" % (income * 100 / tangible_asset)
+    
+    def __get_rotc_list(self, earnings):
+        result = {}
+        last_year = datetime.date.today().year - 1
+        balance = json.loads(earnings.balance)
+        profit = json.loads(earnings.profit)
+        for i in range(10):
+            year = last_year - i
+            k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
+            if k in balance and k in profit:
+                result[str(year)] = self.__get_rotc(balance[k], profit[k])
+            else:
+                result[str(year)] = "-"
+        return result
+    
+    def post(self):
+        ticker = self.get_argument('ticker')
+        earnings = StockEarnings.get(ticker=ticker)
+        data = {}
+        if not earnings.bank_flag:
+            data["annual_rotc"] = self.__get_rotc_list(earnings)
+            StockData.create(ticker=ticker, data=json.dumps(data))
