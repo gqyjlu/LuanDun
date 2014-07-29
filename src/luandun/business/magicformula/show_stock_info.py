@@ -7,9 +7,26 @@ import json
 
 import tornado.web
 
-import gdp
-import stock
-import stock_result
+from luandun.business.magicformula import gdp
+from luandun.business.magicformula import stock
+from luandun.business.magicformula.stock import StockData
+from luandun.business.magicformula import stock_result
+
+
+class ShowStockDataHandler(tornado.web.RequestHandler):
+    
+    def get(self):
+        ticker = self.get_argument("ticker")
+        return self.__generate_json(StockData.get(ticker=ticker).data)
+        
+    
+    def __generate_json(self, data):
+        total_results = {}
+        total_results['error'] = 0
+        total_results['description'] = 'No error'
+        total_results['date'] = datetime.date.today().strftime("%Y%m%d")
+        total_results['data'] = data
+        return json.dumps(total_results)
 
     
 class ShowNetCurrentAssetApproachHandler(tornado.web.RequestHandler):

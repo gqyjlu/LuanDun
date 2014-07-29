@@ -18,6 +18,7 @@ from luandun.business.magicformula.gdp import UpdateGDPHandler
 from luandun.business.magicformula.show_stock_info import ShowGrahamFormulaHandler
 from luandun.business.magicformula.show_stock_info import ShowMagicFormulaHandler
 from luandun.business.magicformula.show_stock_info import ShowNetCurrentAssetApproachHandler
+from luandun.business.magicformula.show_stock_info import ShowStockDataHandler
 from luandun.business.magicformula.show_stock_info import UpdateGrahamFormulaHandler
 from luandun.business.magicformula.show_stock_info import UpdateMagicFormulaHandler
 from luandun.business.magicformula.show_stock_info import UpdateNetCurrentAssetApproachHandler
@@ -55,6 +56,7 @@ application = tornado.web.Application([
     (r"/magicformula/showmagicformula", ShowMagicFormulaHandler),
     (r"/magicformula/showgrahamformula", ShowGrahamFormulaHandler),
     (r"/magicformula/shownetcurrentassetapproach", ShowNetCurrentAssetApproachHandler),
+    (r"/magicformula/showstockdata", ShowStockDataHandler),
 ])
 
 
