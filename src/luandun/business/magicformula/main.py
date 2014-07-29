@@ -56,7 +56,7 @@ application = tornado.web.Application([
     (r"/magicformula/showmagicformula", ShowMagicFormulaHandler),
     (r"/magicformula/showgrahamformula", ShowGrahamFormulaHandler),
     (r"/magicformula/shownetcurrentassetapproach", ShowNetCurrentAssetApproachHandler),
-    (r"/magicformula/showstockdata/[0-9]+", ShowStockDataHandler),
+    (r"/magicformula/showstockdata/([0-9]+)", ShowStockDataHandler),
 ])
 
 
