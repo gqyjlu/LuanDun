@@ -16,8 +16,7 @@ from luandun.business.magicformula import stock_result
 
 class ShowStockDataHandler(tornado.web.RequestHandler):
     
-    def get(self):
-        ticker = self.get_argument("ticker")
+    def get(self, ticker):
         title = StockTitle.get(ticker=ticker).title
         data = json.loads(StockData.get(ticker=ticker).view)
         data["title"] = title
