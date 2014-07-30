@@ -369,8 +369,27 @@ class UpdateEarningsHandler(tornado.web.RequestHandler):
         
         self.__update_earnings(ticker, balance, profit)
         
+        
+class UpdateAllDataHandler(tornado.web.RequestHandler):
+    
+    def get(self):
+        for i in StockData.all():
+            taskqueue.add(url=constant.URL_PREFIX + "/magicformula/updatedata",
+                          keyspace=constant.KEYSPACE, 
+                          method="POST", 
+                          params={"ticker":str(i.ticker)})
+        
 
 class UpdateDataHandler(tornado.web.RequestHandler):
+    
+    def __get_roe(self, balance, profit):
+        net_profit = string.atof(profit[u'归属于母公司所有者的净利润'])
+        total_owner_s_equity = string.atof(balance[u'归属于母公司股东权益合计'])
+        if total_owner_s_equity == 0:
+            return "∞"
+        else:
+            return "%.1f%%" % (net_profit * 100 / total_owner_s_equity)
+        
     
     def __get_rotc(self, balance, profit):
         
@@ -422,10 +441,28 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             result.append(item)
         return result
     
+    def __get_roe_list(self, earnings):
+        result = []
+        last_year = datetime.date.today().year - 1
+        balance = json.loads(earnings.balance)
+        profit = json.loads(earnings.profit)
+        for i in range(10):
+            year = last_year - i
+            k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
+            item = []
+            item.append(year)
+            if k in balance and k in profit:
+                item.append(self.__get_roe(balance[k], profit[k]))
+            else:
+                item.append("-")
+            result.append(item)
+        return result
+    
     def post(self):
         ticker = self.get_argument('ticker')
         earnings = StockEarnings.get(ticker=ticker)
         data = {}
         if not earnings.bank_flag:
             data["annualRotc"] = self.__get_rotc_list(earnings)
+            data["annualRoe"] = self.__get_roe_list(earnings)
             StockData.create(ticker=ticker, view=json.dumps(data))

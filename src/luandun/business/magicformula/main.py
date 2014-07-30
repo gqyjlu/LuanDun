@@ -29,6 +29,7 @@ from luandun.business.magicformula.stock import StockMarketCapital
 from luandun.business.magicformula.stock import StockTitle
 from luandun.business.magicformula.stock_result import StockResult
 from luandun.business.magicformula.update_stock_info import UpdateDataHandler
+from luandun.business.magicformula.update_stock_info import UpdateAllDataHandler
 from luandun.business.magicformula.update_stock_info import UpdateEarningsHandler
 from luandun.business.magicformula.update_stock_info import UpdateMarketCapitalHandler
 from luandun.business.magicformula.update_stock_info import UpdateStockInfoHandler
@@ -57,6 +58,8 @@ application = tornado.web.Application([
     (r"/magicformula/showgrahamformula", ShowGrahamFormulaHandler),
     (r"/magicformula/shownetcurrentassetapproach", ShowNetCurrentAssetApproachHandler),
     (r"/magicformula/showstockdata/([0-9]+)", ShowStockDataHandler),
+    
+    (r"/magicformula/updatealldata", UpdateAllDataHandler),
 ])
 
 
