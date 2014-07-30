@@ -382,16 +382,20 @@ class UpdateAllDataHandler(tornado.web.RequestHandler):
 
 class UpdateDataHandler(tornado.web.RequestHandler):
     
-    def __get_roe(self, balance, profit):
-        net_profit = string.atof(profit[u'归属于母公司所有者的净利润'])
-        total_owner_s_equity = string.atof(balance[u'归属于母公司股东权益合计'])
+    def __get_annual_roe(self, balance, profit, bank_flag):
+        if not bank_flag:
+            net_profit = string.atof(profit[u'归属于母公司所有者的净利润'])
+            total_owner_s_equity = string.atof(balance[u'归属于母公司股东权益合计'])
+        else:
+            net_profit = string.atof(profit[u'归属于母公司的净利润'])
+            total_owner_s_equity = string.atof(balance[u'归属于母公司股东的权益'])
         if total_owner_s_equity == 0:
             return "∞"
         else:
             return "%.1f%%" % (net_profit * 100 / total_owner_s_equity)
         
     
-    def __get_rotc(self, balance, profit):
+    def __get_annual_rotc(self, balance, profit):
         
         income_from_main = string.atof(profit[u'营业收入'])
         cost_of_main_operation = string.atof(profit[u'营业成本'])
@@ -424,7 +428,7 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         else:
             return "%d%%" % (income * 100 / tangible_asset)
     
-    def __get_rotc_list(self, earnings):
+    def __get_annual_rotc_list(self, earnings):
         result = []
         last_year = datetime.date.today().year - 1
         balance = json.loads(earnings.balance)
@@ -434,14 +438,14 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
             item = []
             item.append(year)
-            if k in balance and k in profit:
-                item.append(self.__get_rotc(balance[k], profit[k]))
+            if k in balance and k in profit and not earnings.bank_flag:
+                item.append(self.__get_annual_rotc(balance[k], profit[k]))
             else:
                 item.append("-")
             result.append(item)
         return result
     
-    def __get_roe_list(self, earnings):
+    def __get_annual_roe_list(self, earnings):
         result = []
         last_year = datetime.date.today().year - 1
         balance = json.loads(earnings.balance)
@@ -452,17 +456,93 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             item = []
             item.append(year)
             if k in balance and k in profit:
-                item.append(self.__get_roe(balance[k], profit[k]))
+                item.append(self.__get_annual_roe(balance[k], profit[k], earnings.bank_flag))
             else:
                 item.append("-")
             result.append(item)
         return result
+    
+    def __get_recent_earnings_date(self, year, earnings):
+        balance = earnings.balance
+        profit = earnings.profit
+        cash = earnings.cash
+        q4 = datetime.date(year=year, month=12, day=31)
+        q3 = datetime.date(year=year, month=9, day=30)
+        q2 = datetime.date(year=year, month=6, day=30)
+        q1 = datetime.date(year=year, month=3, day=31)
+        last_year = year - 1
+        if q4.strftime('%Y%m%d') in balance and q4.strftime('%Y%m%d') in profit and q4.strftime('%Y%m%d') in cash:
+            return q4
+        elif q4.replace(year=last_year).strftime('%Y%m%d') in balance and q4.replace(year=last_year).strftime('%Y%m%d') in profit and q4.replace(year=last_year).strftime('%Y%m%d') in cash:
+            if q3.strftime('%Y%m%d') in balance and q3.strftime('%Y%m%d') in profit and q3.strftime('%Y%m%d') in cash and q3.replace(year=last_year).strftime('%Y%m%d') in balance and q3.replace(year=last_year).strftime('%Y%m%d') in profit and q3.replace(year=last_year).strftime('%Y%m%d') in cash:
+                return q3
+            elif q2.strftime('%Y%m%d') in balance and q2.strftime('%Y%m%d') in profit and q2.strftime('%Y%m%d') in cash and q2.replace(year=last_year).strftime('%Y%m%d') in balance and q2.replace(year=last_year).strftime('%Y%m%d') in profit and q2.replace(year=last_year).strftime('%Y%m%d') in cash:
+                return q2
+            elif q1.strftime('%Y%m%d') in balance and q1.strftime('%Y%m%d') in profit and q1.strftime('%Y%m%d') in cash and q1.replace(year=last_year).strftime('%Y%m%d') in balance and q1.replace(year=last_year).strftime('%Y%m%d') in profit and q1.replace(year=last_year).strftime('%Y%m%d') in cash:
+                return q1
+            else:
+                return None
+        else:
+            return None
+        
+    def __get_recent_owner_s_equity_ratio(self, earnings):
+        year = datetime.date.today().year
+        earnings_date = None
+        for i in range(3):
+            earnings_date = self.__get_recent_earnings_date(year - i, earnings)
+            if earnings_date is not None:
+                break
+        if earnings_date is None:
+            return "-"
+        
+        balance = json.loads(earnings.balance)
+        if not earnings.bank_flag:
+            total_owner_s_equity = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'归属于母公司股东权益合计'])
+            total_assets = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'资产总计'])
+        else:
+            total_owner_s_equity = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'归属于母公司股东的权益'])
+            total_assets = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'资产总计'])
+        
+        if total_assets == 0:
+            return "∞"
+        else:
+            return total_owner_s_equity / total_assets
+        
+    def __get_recent_pe(self, ticker, earnings):
+        year = datetime.date.today().year
+        earnings_date = None
+        for i in range(3):
+            earnings_date = self.__get_recent_earnings_date(year - i, earnings)
+            if earnings_date is not None:
+                break
+        if earnings_date is None:
+            return "-"
+        
+        if earnings.bank_flag:
+            key = u"归属于母公司的净利润"
+        else:
+            key = u'归属于母公司所有者的净利润'
+        profit = json.loads(earnings.profit)
+        if earnings_date.month == 12:
+            net_profit = string.atof(profit[earnings_date.strftime('%Y%m%d')][key])
+        else:
+            last_year_date = datetime.date(year=earnings_date.year - 1, month=12, day=31).strftime('%Y%m%d')
+            last_earnings_date = earnings_date.replace(earnings_date.year - 1).strftime('%Y%m%d')
+            net_profit = string.atof(profit[earnings_date.strftime('%Y%m%d')][key]) + string.atof(profit[last_year_date][key]) - string.atof(profit[last_earnings_date][key])
+        
+        if net_profit == 0:
+            return "∞"
+        else:
+            return StockMarketCapital.get(ticker=ticker).market_capital / net_profit
     
     def post(self):
         ticker = self.get_argument('ticker')
         earnings = StockEarnings.get(ticker=ticker)
-        data = {}
-        if not earnings.bank_flag:
-            data["annualRotc"] = self.__get_rotc_list(earnings)
-            data["annualRoe"] = self.__get_roe_list(earnings)
-            StockData.create(ticker=ticker, view=json.dumps(data))
+        view = {}
+        model = {}
+        model["graham"] = {}
+        view["annualRotc"] = self.__get_annual_rotc_list(earnings)
+        view["annualRoe"] = self.__get_annual_roe_list(earnings)
+        model["graham"]["recentPE"] = self.__get_recent_pe(ticker, earnings)
+        model["graham"]["recentOwnersEquityRatio"] = self.__get_recent_owner_s_equity_ratio(earnings)
+        StockData.create(ticker=ticker, view=json.dumps(view), model=json.dumps(model))
