@@ -407,6 +407,15 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         else:
             return "%.1f%%" % (net_profit * 100 / total_owner_s_equity)
         
+    def __get_annual_gpm(self, profit):
+        income_from_main = string.atof(profit[u'营业收入'])
+        cost_of_main_operation = string.atof(profit[u'营业成本'])
+        
+        if income_from_main == 0:
+            return "∞"
+        else:
+            return "%.1f%%" % ((income_from_main - cost_of_main_operation) * 100 / income_from_main)
+        
     def __get_annual_3fee(self, profit):
         income_from_main = string.atof(profit[u'营业收入'])
         general_and_administrative_expense = string.atof(profit[u'管理费用'])
@@ -471,6 +480,22 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             item.append(year)
             if k in balance and k in profit and not earnings.bank_flag:
                 item.append(self.__get_annual_rotc(balance[k], profit[k]))
+            else:
+                item.append("-")
+            result.append(item)
+        return result
+    
+    def __get_annual_gpm_list(self, earnings):
+        result = []
+        last_year = datetime.date.today().year - 1
+        profit = json.loads(earnings.profit)
+        for i in range(7):
+            year = last_year - i
+            k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
+            item = []
+            item.append(year)
+            if k in profit and not earnings.bank_flag:
+                item.append(self.__get_annual_gpm(profit[k]))
             else:
                 item.append("-")
             result.append(item)
@@ -629,6 +654,7 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         view["annualCR"] = self.__get_annual_cr_list(earnings)
         view["annual3Fee"] = self.__get_annual_3fee_list(earnings)
         view["annualOER"] = self.__get_annual_oer_list(earnings)
+        view["annualGPM"] = self.__get_annual_gpm_list(earnings)
         StockData.create(ticker=ticker, view=json.dumps(view), model=json.dumps(model))
     
     def post(self):
