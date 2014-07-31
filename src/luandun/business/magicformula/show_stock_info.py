@@ -128,7 +128,7 @@ class UpdateGrahamFormulaHandler(tornado.web.RequestHandler):
                 stock["earningsDate"] = s["recentEarningsDate"]
                 stock["title"] = StockTitle.get(ticker=item.ticker).title
                 stock["ticker"] = item.ticker
-                stock["marketCapital"] = "%.2f亿" % (StockMarketCapital.get(ticker=item.ticker).market_capital)
+                stock["marketCapital"] = "%.2f亿" % (StockMarketCapital.get(ticker=item.ticker).market_capital / 100000000)
                 stocks.append(stock)
         results = sorted(stocks, cmp=lambda a, b : cmp(a["ticker"], b["ticker"]))
         total_results = {}
