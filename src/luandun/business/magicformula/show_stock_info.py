@@ -9,6 +9,7 @@ import tornado.web
 
 from luandun.business.magicformula import gdp
 from luandun.business.magicformula import stock
+from luandun.business.magicformula.stock import GrahamData
 from luandun.business.magicformula.stock import StockData
 from luandun.business.magicformula.stock import StockTitle
 from luandun.business.magicformula import stock_result
@@ -40,7 +41,7 @@ class ShowNetCurrentAssetApproachHandler(tornado.web.RequestHandler):
     
 class ShowGrahamFormulaHandler(tornado.web.RequestHandler):
     def get(self):
-        entry = stock_result.get_html('grahamformula')
+        entry = stock_result.get_json('grahamformula')
         self.write(entry.content)
         
         
@@ -112,7 +113,27 @@ class UpdateNetCurrentAssetApproachHandler(tornado.web.RequestHandler):
                 results.append(sv)
         return (results, p / b, p / net_profit, net_profit * 100/ownership_interest, p * 100 / gdp_value)
 
+
 class UpdateGrahamFormulaHandler(tornado.web.RequestHandler):
+    
+    def post(self):
+        stocks = []
+        for item in GrahamData.all():
+            s = json.loads(item.data)
+            if s["recentOwnersEquityRatio"] >= 0.5 and s["recentPE"] <= 10 and s["recentPE"] > 0:
+                stock = {}
+                stock["PE"] = "%.1f" % (s["recentPE"])
+                stock["ownersEquityRatio"] = "%.1f%%" % (s["recentOwnersEquityRatio"] * 100)
+                stock["earningsDate"] = s["recentEarningsDate"]
+                stock["title"] = StockTitle.get(ticker=item.ticker).title
+                stock["ticker"] = item.ticker
+                stocks.append(stock)
+        results = sorted(stocks, cmp=lambda a, b : cmp(a["ticker"], b["ticker"]))
+        json_result = json.dumps(results)
+        stock_result.create_json("grahamformula", json_result)
+    
+    
+class UpdateGrahamFormulaHandler1(tornado.web.RequestHandler):
     
     def __filter(self, stocks):
         results = []
@@ -293,8 +314,6 @@ class UpdateMagicFormulaHandler(tornado.web.RequestHandler):
         values['PE'] = "%.2f" % (pe)
         values['ROE'] = "%.1f%%" % (roe)
         values['MCGDP'] = "%.0f%%" % (mc_gdp)
-        entry = stock_result.get_html('magicformula')
-        stock_result.set_html('magicformula', entry)
         self.__generate_json(values['stocks'])
         
     def __generate_json(self, stocks):
@@ -321,6 +340,4 @@ class UpdateMagicFormulaHandler(tornado.web.RequestHandler):
         total_results['date'] = datetime.date.today().strftime("%Y%m%d")
         total_results['list'] = results
         json_result = json.dumps(total_results)
-        entry = stock_result.get_json('magicformula')
-        entry.content = json_result
-        stock_result.set_json('magicformula', entry)
+        stock_result.create_json("magicformula", json_result)
