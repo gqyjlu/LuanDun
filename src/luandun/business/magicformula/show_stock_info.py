@@ -121,7 +121,7 @@ class UpdateGrahamFormulaHandler(tornado.web.RequestHandler):
         stocks = []
         for item in GrahamData.all():
             s = json.loads(item.data)
-            if s["recentOwnersEquityRatio"] >= 0.5 and s["recentPE"] <= 10 and s["recentPE"] > 0:
+            if s["recentOwnersEquityRatio"] >= 0.5 and s["recentOwnersEquityRatio"] <= 1 and s["recentPE"] <= 10 and s["recentPE"] > 0:
                 stock = {}
                 stock["PE"] = "%.1f" % (s["recentPE"])
                 stock["ownersEquityRatio"] = "%.1f%%" % (s["recentOwnersEquityRatio"] * 100)
