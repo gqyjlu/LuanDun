@@ -10,6 +10,7 @@ import tornado.web
 from luandun.business.magicformula import gdp
 from luandun.business.magicformula import stock
 from luandun.business.magicformula.stock import GrahamData
+from luandun.business.magicformula.stock import StockMarketCapital
 from luandun.business.magicformula.stock import StockData
 from luandun.business.magicformula.stock import StockTitle
 from luandun.business.magicformula import stock_result
@@ -127,6 +128,7 @@ class UpdateGrahamFormulaHandler(tornado.web.RequestHandler):
                 stock["earningsDate"] = s["recentEarningsDate"]
                 stock["title"] = StockTitle.get(ticker=item.ticker).title
                 stock["ticker"] = item.ticker
+                stock["marketCapital"] = "%.2f亿" % (StockMarketCapital.get(ticker=item.ticker).market_capital)
                 stocks.append(stock)
         results = sorted(stocks, cmp=lambda a, b : cmp(a["ticker"], b["ticker"]))
         total_results = {}
