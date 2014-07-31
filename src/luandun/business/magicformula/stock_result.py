@@ -17,6 +17,10 @@ def get_html(ticker):
         
 def set_html(ticker, entry):
     entry.save()
+    
+def create_html(ticker, content):
+    key = "html" + ticker
+    StockResult.create(key=key, content=content)
 
 def get_json(ticker):
     key = 'json' + ticker
@@ -24,3 +28,8 @@ def get_json(ticker):
         
 def set_json(ticker, entry):
     entry.save()
+    
+def create_json(ticker, content):
+    key = "json" + ticker
+    StockResult.create(key=key, content=content)
+    
