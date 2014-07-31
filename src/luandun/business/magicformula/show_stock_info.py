@@ -129,7 +129,12 @@ class UpdateGrahamFormulaHandler(tornado.web.RequestHandler):
                 stock["ticker"] = item.ticker
                 stocks.append(stock)
         results = sorted(stocks, cmp=lambda a, b : cmp(a["ticker"], b["ticker"]))
-        json_result = json.dumps(results)
+        total_results = {}
+        total_results['error'] = 0
+        total_results['description'] = 'No error'
+        total_results['date'] = datetime.date.today().strftime("%Y%m%d")
+        total_results['list'] = results
+        json_result = json.dumps(total_results)
         stock_result.create_json("grahamformula", json_result)
     
     
