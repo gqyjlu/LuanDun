@@ -395,6 +395,13 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         else:
             return "%.1f%%" % (net_profit * 100 / total_owner_s_equity)
         
+    def __get_annual_cr(self, balance):
+        current_asset = string.atof(balance[u'流动资产合计'])
+        current_liabilities = string.atof(balance[u'流动负债合计'])
+        if current_liabilities == 0:
+            return "∞"
+        else:
+            return "%.2f" % (current_asset / current_liabilities)
     
     def __get_annual_rotc(self, balance, profit):
         
@@ -434,7 +441,7 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         last_year = datetime.date.today().year - 1
         balance = json.loads(earnings.balance)
         profit = json.loads(earnings.profit)
-        for i in range(10):
+        for i in range(7):
             year = last_year - i
             k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
             item = []
@@ -446,12 +453,28 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             result.append(item)
         return result
     
+    def __get_annual_cr_list(self, earnings):
+        result = []
+        last_year = datetime.date.today().year - 1
+        balance = json.loads(earnings.balance)
+        for i in range(7):
+            year = last_year - i
+            k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
+            item = []
+            item.append(year)
+            if k in balance and not earnings.bank_flag:
+                item.append(self.__get_annual_cr(balance[k]))
+            else:
+                item.append("-")
+            result.append(item)
+        return result
+    
     def __get_annual_roe_list(self, earnings):
         result = []
         last_year = datetime.date.today().year - 1
         balance = json.loads(earnings.balance)
         profit = json.loads(earnings.profit)
-        for i in range(10):
+        for i in range(7):
             year = last_year - i
             k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
             item = []
@@ -548,6 +571,7 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         model = {}
         view["annualRotc"] = self.__get_annual_rotc_list(earnings)
         view["annualRoe"] = self.__get_annual_roe_list(earnings)
+        view["annualCR"] = self.__get_annual_cr_list(earnings)
         StockData.create(ticker=ticker, view=json.dumps(view), model=json.dumps(model))
     
     def post(self):
