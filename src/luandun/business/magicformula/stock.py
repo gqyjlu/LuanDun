@@ -66,6 +66,13 @@ class StockData(Model):
     view = columns.Text()
     
     
+class GrahamData(Model):
+    __keyspace__ = "magicformula"
+    __table_name__ = "graham_data"
+    ticker = columns.Text(primary_key=True)
+    data = columns.Text()
+    
+    
 class NetCurrentAssetApproachStockView(object):
     
     def __init__(self):
