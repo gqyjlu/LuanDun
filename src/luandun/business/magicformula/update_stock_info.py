@@ -407,6 +407,15 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         else:
             return "%.1f%%" % (net_profit * 100 / total_owner_s_equity)
         
+    def __get_annual_fcf(self, profit, cash):
+        if string.atof(profit[u"利润总额"]) == 0:
+            return "∞"
+        capital_expenditure = string.atof(cash[u"购建固定资产、无形资产和其他长期资产所支付的现金"])
+        depreciation_and_amortization = string.atof(cash[u"资产减值准备"]) + string.atof(cash[u"固定资产折旧、油气资产折耗、生产性物资折旧"]) + string.atof(cash[u"无形资产摊销"]) + string.atof(cash[u"长期待摊费用摊销"]) + string.atof(cash[u"固定资产报废损失"])
+        working_capital_to_reduce = string.atof(cash[u"存货的减少"]) + string.atof(cash[u"经营性应收项目的减少"]) + string.atof(cash[u"待摊费用的减少"]) + string.atof(cash[u"经营性应付项目的增加"]) + string.atof(cash[u"预提费用的增加"])
+        noplat = (string.atof(profit[u"三、营业利润"]) + string.atof(profit[u"营业外收入"]) - string.atof(profit[u"营业外支出"]) - string.atof(profit[u"所得税费用"]) + string.atof(profit[u"财务费用"])) * (1 - string.atof(profit[u"所得税费用"]) / string.atof(profit[u"利润总额"]))
+        return "%.2f亿" % ((noplat + depreciation_and_amortization + working_capital_to_reduce - capital_expenditure) / 100000000)
+        
     def __get_annual_gpm(self, profit):
         income_from_main = string.atof(profit[u'营业收入'])
         cost_of_main_operation = string.atof(profit[u'营业成本'])
@@ -480,6 +489,27 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             item.append(year)
             if k in balance and k in profit and not earnings.bank_flag:
                 item.append(self.__get_annual_rotc(balance[k], profit[k]))
+            else:
+                item.append("-")
+            result.append(item)
+        return result
+    
+    def __get_annual_fcf_list(self, earnings):
+        result = []
+        last_year = datetime.date.today().year - 1
+        profit = json.loads(earnings.profit)
+        cash = json.loads(earnings.cash)
+        for i in range(7):
+            year = last_year - i
+            k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
+            item = []
+            item.append(year)
+            if k in profit and not earnings.bank_flag:
+                try:
+                    item.append(self.__get_annual_fcf(profit[k], cash[k]))
+                except KeyError as ke:
+                    logging.exception(ke)
+                    item.append("-")
             else:
                 item.append("-")
             result.append(item)
@@ -655,6 +685,7 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         view["annual3Fee"] = self.__get_annual_3fee_list(earnings)
         view["annualOER"] = self.__get_annual_oer_list(earnings)
         view["annualGPM"] = self.__get_annual_gpm_list(earnings)
+        view["annualFCF"] = self.__get_annual_fcf_list(earnings)
         StockData.create(ticker=ticker, view=json.dumps(view), model=json.dumps(model))
     
     def post(self):
