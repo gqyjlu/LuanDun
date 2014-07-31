@@ -383,6 +383,18 @@ class UpdateAllDataHandler(tornado.web.RequestHandler):
 
 class UpdateDataHandler(tornado.web.RequestHandler):
     
+    def __get_annual_oer(self, balance, bank_flag):
+        if not bank_flag:
+            total_owner_s_equity = string.atof(balance[u'归属于母公司股东权益合计'])
+            total_assets = string.atof(balance[u'资产总计'])
+        else:
+            total_owner_s_equity = string.atof(balance[u'归属于母公司股东的权益'])
+            total_assets = string.atof(balance[u'资产总计'])
+        if total_assets == 0:
+            return "∞"
+        else:
+            return "%.1f%%" % (total_owner_s_equity * 100 / total_assets)
+    
     def __get_annual_roe(self, balance, profit, bank_flag):
         if not bank_flag:
             net_profit = string.atof(profit[u'归属于母公司所有者的净利润'])
@@ -459,6 +471,22 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             item.append(year)
             if k in balance and k in profit and not earnings.bank_flag:
                 item.append(self.__get_annual_rotc(balance[k], profit[k]))
+            else:
+                item.append("-")
+            result.append(item)
+        return result
+    
+    def __get_annual_oer_list(self, earnings):
+        result = []
+        last_year = datetime.date.today().year - 1
+        balance = json.loads(earnings.balance)
+        for i in range(7):
+            year = last_year - i
+            k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
+            item = []
+            item.append(year)
+            if k in balance:
+                item.append(self.__get_annual_oer(balance[k], earnings.bank_flag))
             else:
                 item.append("-")
             result.append(item)
@@ -600,6 +628,7 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         view["annualRoe"] = self.__get_annual_roe_list(earnings)
         view["annualCR"] = self.__get_annual_cr_list(earnings)
         view["annual3Fee"] = self.__get_annual_3fee_list(earnings)
+        view["annualOER"] = self.__get_annual_oer_list(earnings)
         StockData.create(ticker=ticker, view=json.dumps(view), model=json.dumps(model))
     
     def post(self):
