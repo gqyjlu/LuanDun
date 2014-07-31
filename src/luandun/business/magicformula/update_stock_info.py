@@ -22,6 +22,7 @@ import tornado.web
 from luandun.api import taskqueue
 from luandun.business.magicformula import constant
 from luandun.business.magicformula import stock
+from luandun.business.magicformula.stock import GrahamData
 from luandun.business.magicformula.stock import Stock
 from luandun.business.magicformula.stock import StockData
 from luandun.business.magicformula.stock import StockEarnings
@@ -462,7 +463,7 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             result.append(item)
         return result
     
-    def __get_recent_earnings_date(self, year, earnings):
+    def __get_recent_earnings_date_by_year(self, year, earnings):
         balance = earnings.balance
         profit = earnings.profit
         cash = earnings.cash
@@ -485,13 +486,17 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         else:
             return None
         
-    def __get_recent_owner_s_equity_ratio(self, earnings):
+    def __get_recent_earnings_date(self, earnings):
         year = datetime.date.today().year
         earnings_date = None
         for i in range(3):
-            earnings_date = self.__get_recent_earnings_date(year - i, earnings)
+            earnings_date = self.__get_recent_earnings_date_by_year(year - i, earnings)
             if earnings_date is not None:
                 break
+        return earnings_date
+        
+    def __get_recent_owner_s_equity_ratio(self, earnings_date, earnings):
+        
         if earnings_date is None:
             return "-"
         
@@ -508,13 +513,8 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         else:
             return total_owner_s_equity / total_assets
         
-    def __get_recent_pe(self, ticker, earnings):
-        year = datetime.date.today().year
-        earnings_date = None
-        for i in range(3):
-            earnings_date = self.__get_recent_earnings_date(year - i, earnings)
-            if earnings_date is not None:
-                break
+    def __get_recent_pe(self, ticker, earnings_date, earnings):
+
         if earnings_date is None:
             return "-"
         
@@ -534,15 +534,25 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             return "∞"
         else:
             return StockMarketCapital.get(ticker=ticker).market_capital / net_profit
+        
+    def __update_graham_data(self, ticker, earnings):
+        data = {}
+        earnings_date = self.__get_recent_earnings_date(earnings)
+        data["recentEarningsDate"] = earnings_date.strftime("%Y%m%d")
+        data["recentPE"] = self.__get_recent_pe(ticker, earnings_date, earnings)
+        data["recentOwnersEquityRatio"] = self.__get_recent_owner_s_equity_ratio(earnings_date, earnings)
+        GrahamData.create(ticker=ticker, data=json.dumps(data))
+        
+    def __update_stock_data(self, ticker, earnings):
+        view = {}
+        model = {}
+        view["annualRotc"] = self.__get_annual_rotc_list(earnings)
+        view["annualRoe"] = self.__get_annual_roe_list(earnings)
+        StockData.create(ticker=ticker, view=json.dumps(view), model=json.dumps(model))
     
     def post(self):
         ticker = self.get_argument('ticker')
         earnings = StockEarnings.get(ticker=ticker)
-        view = {}
-        model = {}
-        model["graham"] = {}
-        view["annualRotc"] = self.__get_annual_rotc_list(earnings)
-        view["annualRoe"] = self.__get_annual_roe_list(earnings)
-        model["graham"]["recentPE"] = self.__get_recent_pe(ticker, earnings)
-        model["graham"]["recentOwnersEquityRatio"] = self.__get_recent_owner_s_equity_ratio(earnings)
-        StockData.create(ticker=ticker, view=json.dumps(view), model=json.dumps(model))
+        self.__update_graham_data(ticker, earnings)
+        self.__update_stock_data(ticker, earnings)
+        
