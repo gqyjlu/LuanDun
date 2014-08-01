@@ -416,6 +416,15 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         noplat = (string.atof(profit[u"三、营业利润"]) + string.atof(profit[u"营业外收入"]) - string.atof(profit[u"营业外支出"]) - string.atof(profit[u"所得税费用"]) + string.atof(profit[u"财务费用"])) * (1 - string.atof(profit[u"所得税费用"]) / string.atof(profit[u"利润总额"]))
         return "%.2f亿" % ((noplat + depreciation_and_amortization + working_capital_to_reduce - capital_expenditure) / 100000000)
         
+    def __get_annual_npm(self, profit):
+        income_from_main = string.atof(profit[u'营业收入'])
+        net_profit = string.atof(profit[u'归属于母公司所有者的净利润'])
+        
+        if income_from_main == 0:
+            return "∞"
+        else:
+            return "%.1f%%" % (net_profit * 100 / income_from_main)
+        
     def __get_annual_gpm(self, profit):
         income_from_main = string.atof(profit[u'营业收入'])
         cost_of_main_operation = string.atof(profit[u'营业成本'])
@@ -435,6 +444,15 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             return "∞"
         else:
             return "%.2f%%" % ((general_and_administrative_expense + sales_expenses + financial_expense) * 100 / income_from_main)
+        
+    def __get_annual_qr(self, balance):
+        current_asset = string.atof(balance[u'流动资产合计'])
+        inventory = string.atof(balance[u"存货"])
+        current_liabilities = string.atof(balance[u'流动负债合计'])
+        if current_liabilities == 0:
+            return "∞"
+        else:
+            return "%.2f" % ((current_asset - inventory) / current_liabilities)
         
     def __get_annual_cr(self, balance):
         current_asset = string.atof(balance[u'流动资产合计'])
@@ -515,6 +533,22 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             result.append(item)
         return result
     
+    def __get_annual_npm_list(self, earnings):
+        result = []
+        last_year = datetime.date.today().year - 1
+        profit = json.loads(earnings.profit)
+        for i in range(7):
+            year = last_year - i
+            k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
+            item = []
+            item.append(year)
+            if k in profit and not earnings.bank_flag:
+                item.append(self.__get_annual_npm(profit[k]))
+            else:
+                item.append("-")
+            result.append(item)
+        return result
+    
     def __get_annual_gpm_list(self, earnings):
         result = []
         last_year = datetime.date.today().year - 1
@@ -558,6 +592,22 @@ class UpdateDataHandler(tornado.web.RequestHandler):
             item.append(year)
             if k in profit and not earnings.bank_flag:
                 item.append(self.__get_annual_3fee(profit[k]))
+            else:
+                item.append("-")
+            result.append(item)
+        return result
+    
+    def __get_annual_qr_list(self, earnings):
+        result = []
+        last_year = datetime.date.today().year - 1
+        balance = json.loads(earnings.balance)
+        for i in range(7):
+            year = last_year - i
+            k = datetime.date(year=year, month=12, day=31).strftime('%Y%m%d')
+            item = []
+            item.append(year)
+            if k in balance and not earnings.bank_flag:
+                item.append(self.__get_annual_qr(balance[k]))
             else:
                 item.append("-")
             result.append(item)
@@ -682,9 +732,11 @@ class UpdateDataHandler(tornado.web.RequestHandler):
         view["annualRotc"] = self.__get_annual_rotc_list(earnings)
         view["annualRoe"] = self.__get_annual_roe_list(earnings)
         view["annualCR"] = self.__get_annual_cr_list(earnings)
+        view["annualQR"] = self.__get_annual_qr_list(earnings)
         view["annual3Fee"] = self.__get_annual_3fee_list(earnings)
         view["annualOER"] = self.__get_annual_oer_list(earnings)
         view["annualGPM"] = self.__get_annual_gpm_list(earnings)
+        view["annualNPM"] = self.__get_annual_npm_list(earnings)
         view["annualFCF"] = self.__get_annual_fcf_list(earnings)
         StockData.create(ticker=ticker, view=json.dumps(view), model=json.dumps(model))
     
