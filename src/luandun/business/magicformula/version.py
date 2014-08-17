@@ -16,6 +16,7 @@ class StockViewVersion0(object):
     
     def __init__(self, response):
         self.__ticker = response["ticker"]
+        self.__title = response["title"]
         self.__bank_flag = response["bank_flag"]
         self.__balance = response["balance"]
         self.__profit = response["profit"]
@@ -24,6 +25,7 @@ class StockViewVersion0(object):
         
     def data(self):
         data = {}
+        data["title"] = self.__title
         data["annualRotc"] = self.__get_annual_rotc_list()
         data["annualRoe"] = self.__get_annual_roe_list()
         data["annualCR"] = self.__get_annual_cr_list()

@@ -81,6 +81,7 @@ class Job(object):
                 result = urllib.urlopen(url, params)
             else:
                 result = urllib.urlopen(url + "?" + params)
+            print result.getcode(), url, params
             if 200 != result.getcode():
                 raise LuanDunException("Failure of Job")
         except IOError as ioe:

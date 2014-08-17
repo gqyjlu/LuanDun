@@ -3,7 +3,7 @@
 . env.sh
 
 if [ "x$BEANSTALKD_PORT" = "x" ]; then
-	BEANSTALKD_PORT = 11300
+	BEANSTALKD_PORT=11300
 fi
 
 mkdir -p $LUANDUN_HOME/data/beanstalkd
