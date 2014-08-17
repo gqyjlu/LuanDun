@@ -10,11 +10,11 @@ Created on 2014年8月11日
 
 import tornado
 
-from luandun.business.registerguide.handler import SampleHandler
+from luandun.business.registerguide.handler import CountHandler
 
 
 application = tornado.web.Application([
-    (r'/registerguide', SampleHandler),
+    (r'/registerguide/count', CountHandler),
 ])
 
 
