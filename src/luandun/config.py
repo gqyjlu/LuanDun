@@ -55,3 +55,6 @@ class ConfigManager(object):
         
     def producer_address(self):
         return parse_address(self.__config.get("producer", "address"))
+    
+    def mq_address(self):
+        return parse_address(self.__config.get("mq", "address"))

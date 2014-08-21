@@ -9,6 +9,7 @@ Created on 2014年8月9日
 
 
 import datetime
+import json
 import logging
 import string
 
@@ -186,6 +187,7 @@ class UpdateStockDataHandler(MagicFormulaHandler):
         
     def __db_stock_model_find_callback(self, response):
         self.__version0 = StockViewVersion0(response)
+        self.__title = response["title"]
         self.__bank_flag = response["bank_flag"]
         self.__balance = response["balance"]
         self.__profit = response["profit"]
@@ -194,16 +196,17 @@ class UpdateStockDataHandler(MagicFormulaHandler):
         self.__update_graham_formula_data()
         self.__update_magic_formula_data()
         self.__update_stock_view_0()
-        print self.__graham_formula
-        print self.__magic_formula
-        print self.__views[0]
         self.db.stock_model.update({"ticker" : self.__ticker},
                                    {"$set" : {"graham_formula" : self.__graham_formula, "magic_formula" : self.__magic_formula}}, 
+                                   safe=True,
+                                   upsert=True,
                                    callback=self.bind(self.__db_stock_model_update_callback))
         
     def __db_stock_model_update_callback(self, response):
         self.db.stock_view.update({"ticker" : self.__ticker, "version" : 0},
                                   {"$set" : {"data" : self.__views[0]}},
+                                  safe=True,
+                                  upsert=True,
                                   callback=self.bind(self.__db_stock_view_update_callback))
         
     def __db_stock_view_update_callback(self, response):
@@ -285,78 +288,18 @@ class UpdateStockDataHandler(MagicFormulaHandler):
     def __update_magic_formula_data(self):
         self.__magic_formula = {}
         earnings_date = self.__get_recent_earnings_date(self.__for_magic_formula)
-        self.__magic_formula["recentROTC"] = self.__get_recent_rotc(earnings_date)
-        self.__magic_formula["recentEY"] = self.__get_recent_ey(earnings_date)
+        self.__magic_formula["recentTA"] = self.__get_recent_ta(earnings_date) 
+        self.__magic_formula["recentEBIT"] = self.__get_recent_ebit(earnings_date)
+        self.__magic_formula["recentEV"] = self.__get_recent_ev(earnings_date)
+        self.__magic_formula["recentIncome"] = self.__get_recent_income(earnings_date)
         self.__magic_formula["recentEarningsDate"] = earnings_date.strftime("%Y%m%d")
         
-    def __get_recent_ey(self, earnings_date):
+    def __get_recent_ta(self, earnings_date):
         if earnings_date is None:
             return "-"
         if self.__bank_flag:
             return "-"
         balance = self.__balance
-        profit = self.__profit
-        current_asset = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'流动资产合计'])
-        current_liabilities = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'流动负债合计'])
-        short_term_loans = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'短期借款'])
-        notes_payable = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'应付票据'])
-        a_maturity_of_non_current_liabilities = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'一年内到期的非流动负债'])
-        cope_with_short_term_bond = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'应付短期债券'])
-        monetary_fund = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'货币资金'])
-        transactional_financial_assets = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'交易性金融资产'])
-        long_term_loans = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'长期借款'])
-        bonds_payable = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'应付债券'])
-        minority_equity = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'少数股东权益'])
-        available_for_sale_financial_assets = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'可供出售金融资产'])
-        hold_expires_investment = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'持有至到期投资'])
-        delay_income_tax_liabilities = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'递延所得税负债'])
-        excess_cash = max(0, (monetary_fund + transactional_financial_assets) - max(0, current_liabilities - (current_asset - (monetary_fund + transactional_financial_assets))))
-        enterprise_value = (short_term_loans + notes_payable + a_maturity_of_non_current_liabilities
-                            + cope_with_short_term_bond + long_term_loans
-                            + bonds_payable + minority_equity
-                            - available_for_sale_financial_assets - hold_expires_investment
-                            + delay_income_tax_liabilities - excess_cash + self.__market_capital)
-        if earnings_date.month == 12:
-            ebit = (string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业收入']) 
-                    - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业成本']) 
-                    - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业税金及附加']) 
-                    - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'管理费用']) 
-                    - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'销售费用'])
-                    + string.atof(profit[earnings_date.strftime('%Y%m%d')][u'其中:对联营企业和合营企业的投资收益']))
-        else:
-            last_year_date = datetime.date(year=earnings_date.year - 1, month=12, day=31).strftime('%Y%m%d')
-            last_earnings_date = earnings_date.replace(earnings_date.year - 1).strftime('%Y%m%d')
-            this_earnings_ebit = (string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业收入']) 
-                         - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业成本']) 
-                         - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业税金及附加']) 
-                         - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'管理费用']) 
-                         - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'销售费用'])
-                         + string.atof(profit[earnings_date.strftime('%Y%m%d')][u'其中:对联营企业和合营企业的投资收益']))
-            last_year_ebit = (string.atof(profit[last_year_date][u'营业收入']) 
-                              - string.atof(profit[last_year_date][u'营业成本']) 
-                              - string.atof(profit[last_year_date][u'营业税金及附加']) 
-                              - string.atof(profit[last_year_date][u'管理费用']) 
-                              - string.atof(profit[last_year_date][u'销售费用'])
-                              + string.atof(profit[last_year_date][u'其中:对联营企业和合营企业的投资收益'])) 
-            last_earnings_ebit = (string.atof(profit[last_earnings_date][u'营业收入']) 
-                                  - string.atof(profit[last_earnings_date][u'营业成本']) 
-                                  - string.atof(profit[last_earnings_date][u'营业税金及附加']) 
-                                  - string.atof(profit[last_earnings_date][u'管理费用']) 
-                                  - string.atof(profit[last_earnings_date][u'销售费用'])
-                                  + string.atof(profit[last_earnings_date][u'其中:对联营企业和合营企业的投资收益']))
-            ebit = this_earnings_ebit + last_year_ebit - last_earnings_ebit
-        if ebit == 0:
-            return "∞"
-        else:
-            return ebit / enterprise_value
-        
-    def __get_recent_rotc(self, earnings_date):
-        if earnings_date is None:
-            return "-"
-        if self.__bank_flag:
-            return "-"
-        balance = self.__balance
-        profit = self.__profit
         current_asset = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'流动资产合计'])
         current_liabilities = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'流动负债合计'])
         monetary_fund = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'货币资金'])
@@ -367,6 +310,14 @@ class UpdateStockDataHandler(MagicFormulaHandler):
                           + string.atof(balance[earnings_date.strftime('%Y%m%d')][u'一年内到期的非流动负债'])
                           + string.atof(balance[earnings_date.strftime('%Y%m%d')][u'应付短期债券']) + string.atof(balance[earnings_date.strftime('%Y%m%d')][u'固定资产净值'])
                           + string.atof(balance[earnings_date.strftime('%Y%m%d')][u'投资性房地产']) - excess_cash)
+        return tangible_asset
+    
+    def __get_recent_ebit(self, earnings_date):
+        if earnings_date is None:
+            return "-"
+        if self.__bank_flag:
+            return "-"
+        profit = self.__profit
         if earnings_date.month == 12:
             ebit = (string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业收入']) 
                     - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业成本']) 
@@ -392,10 +343,72 @@ class UpdateStockDataHandler(MagicFormulaHandler):
                                   - string.atof(profit[last_earnings_date][u'管理费用']) 
                                   - string.atof(profit[last_earnings_date][u'销售费用']))
             ebit = this_earnings_ebit + last_year_ebit - last_earnings_ebit
-        if ebit == 0:
-            return "∞"
+        return ebit
+        
+    def __get_recent_ev(self, earnings_date):
+        if earnings_date is None:
+            return "-"
+        if self.__bank_flag:
+            return "-"
+        balance = self.__balance
+        current_asset = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'流动资产合计'])
+        current_liabilities = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'流动负债合计'])
+        short_term_loans = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'短期借款'])
+        notes_payable = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'应付票据'])
+        a_maturity_of_non_current_liabilities = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'一年内到期的非流动负债'])
+        cope_with_short_term_bond = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'应付短期债券'])
+        monetary_fund = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'货币资金'])
+        transactional_financial_assets = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'交易性金融资产'])
+        long_term_loans = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'长期借款'])
+        bonds_payable = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'应付债券'])
+        minority_equity = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'少数股东权益'])
+        available_for_sale_financial_assets = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'可供出售金融资产'])
+        hold_expires_investment = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'持有至到期投资'])
+        delay_income_tax_liabilities = string.atof(balance[earnings_date.strftime('%Y%m%d')][u'递延所得税负债'])
+        excess_cash = max(0, (monetary_fund + transactional_financial_assets) - max(0, current_liabilities - (current_asset - (monetary_fund + transactional_financial_assets))))
+        enterprise_value = (short_term_loans + notes_payable + a_maturity_of_non_current_liabilities
+                            + cope_with_short_term_bond + long_term_loans
+                            + bonds_payable + minority_equity
+                            - available_for_sale_financial_assets - hold_expires_investment
+                            + delay_income_tax_liabilities - excess_cash + self.__market_capital)
+        return enterprise_value
+    
+    def __get_recent_income(self, earnings_date):
+        if earnings_date is None:
+            return "-"
+        if self.__bank_flag:
+            return "-"
+        profit = self.__profit
+        if earnings_date.month == 12:
+            income = (string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业收入']) 
+                    - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业成本']) 
+                    - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业税金及附加']) 
+                    - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'管理费用']) 
+                    - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'销售费用'])
+                    + string.atof(profit[earnings_date.strftime('%Y%m%d')][u'其中:对联营企业和合营企业的投资收益']))
         else:
-            return ebit / tangible_asset
+            last_year_date = datetime.date(year=earnings_date.year - 1, month=12, day=31).strftime('%Y%m%d')
+            last_earnings_date = earnings_date.replace(earnings_date.year - 1).strftime('%Y%m%d')
+            this_earnings_income = (string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业收入']) 
+                         - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业成本']) 
+                         - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'营业税金及附加']) 
+                         - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'管理费用']) 
+                         - string.atof(profit[earnings_date.strftime('%Y%m%d')][u'销售费用'])
+                         + string.atof(profit[earnings_date.strftime('%Y%m%d')][u'其中:对联营企业和合营企业的投资收益']))
+            last_year_income = (string.atof(profit[last_year_date][u'营业收入']) 
+                              - string.atof(profit[last_year_date][u'营业成本']) 
+                              - string.atof(profit[last_year_date][u'营业税金及附加']) 
+                              - string.atof(profit[last_year_date][u'管理费用']) 
+                              - string.atof(profit[last_year_date][u'销售费用'])
+                              + string.atof(profit[last_year_date][u'其中:对联营企业和合营企业的投资收益'])) 
+            last_earnings_income = (string.atof(profit[last_earnings_date][u'营业收入']) 
+                                  - string.atof(profit[last_earnings_date][u'营业成本']) 
+                                  - string.atof(profit[last_earnings_date][u'营业税金及附加']) 
+                                  - string.atof(profit[last_earnings_date][u'管理费用']) 
+                                  - string.atof(profit[last_earnings_date][u'销售费用'])
+                                  + string.atof(profit[last_earnings_date][u'其中:对联营企业和合营企业的投资收益']))
+            income = this_earnings_income + last_year_income - last_earnings_income
+        return income
         
     def __get_recent_earnings_date(self, callback):
         year = datetime.date.today().year
@@ -424,17 +437,131 @@ class UpdateStockDataHandler(MagicFormulaHandler):
             return None
 
 
-class UpdateGrahamFormulaDataHandler(MagicFormulaHandler):
+class UpdateGrahamFormulaHandler(MagicFormulaHandler):
     
     @tornado.web.asynchronous
     def post(self):
         self.db.stock_model.find({},
-                                 {"title" : 1, "graham_formula" : 1, "ticker" : 1}, 
+                                 {"title" : 1, "graham_formula" : 1, "ticker" : 1, "market_capital" : 1}, 
                                  limit = 10000, 
-                                 callback=self.bind(self.__db_callback))
+                                 callback=self.bind(self.__db_find_callback))
         
-    def __db_callback(self, response):
-        for i in response:
-            if i["ticker"] == "000568":
-                print i
+    def __db_find_callback(self, response):
+        stocks = []
+        for item in response:
+            if "graham_formula" not in item:
+                continue
+            s = item["graham_formula"]
+            if s["recentOwnersEquityRatio"] >= 0.5 and s["recentOwnersEquityRatio"] <= 1 and s["recentPE"] <= 10 and s["recentPE"] > 0:
+                stock = {}
+                stock["PE"] = "%.1f" % (s["recentPE"])
+                stock["ownersEquityRatio"] = "%.1f%%" % (s["recentOwnersEquityRatio"] * 100)
+                stock["earningsDate"] = s["recentEarningsDate"]
+                stock["title"] = item["title"]
+                stock["ticker"] = item["ticker"]
+                stock["marketCapital"] = "%.2f亿" % (item["market_capital"] / 100000000)
+                stocks.append(stock)
+        results = sorted(stocks, cmp=lambda a, b : cmp(a["ticker"], b["ticker"]))
+        json_result = json.dumps(results)
+        self.db.view.update({"key" : "grahamformula_json"},
+                            {"$set" : {"value" : json_result}},
+                            safe=True,
+                            upsert=True,
+                            callback=self.bind(self.__db_update_callback))
+    
+    def __db_update_callback(self, response):
         self.finish()
+        
+        
+class UpdateMagicFormulaHandler(MagicFormulaHandler):
+    
+    @tornado.web.asynchronous
+    def post(self):
+        self.db.stock_model.find({},
+                                 {"title" : 1, "magic_formula" : 1, "ticker" : 1, "market_capital" : 1, "bank_flag" : 1, "subcategory" : 1},
+                                 limit=10000,
+                                 callback=self.bind(self.__db_find_callback))
+        
+    def __db_find_callback(self, response):
+        stocks = []
+        for item in response:
+            if "magic_formula" not in item:
+                continue
+            if item["bank_flag"]:
+                continue
+            if "subcategory" in item:
+                if item["subcategory"].find("D") > 0 or item["subcategory"].find("G") > 0 or item["subcategory"].find("N") > 0 or item["subcategory"].find("J") > 0:
+                    continue
+            stocks.append(item) 
+        stocks = self.__magicformula(stocks)
+        position = 30
+        while position<len(stocks):
+            if stocks[position]["rank"] == stocks[position - 1]["rank"]:
+                position = position + 1
+            else:
+                break
+        results = []
+        for s in stocks[0 : position]:
+            result = {}
+            result["rank"] = s["rank"]
+            result["ticker"] = s["ticker"]
+            result["title"] = s["title"]
+            result["marketCapital"] = "%.2f亿" % (s["market_capital"] / 100000000)
+            result["earningsDate"] = s["magic_formula"]["recentEarningsDate"]
+            if s["magic_formula"]["recentTA"] == 0:
+                result["rotc"] = "∞"
+            else:
+                result["rotc"] = "%d%%" % (s["magic_formula"]["recentEBIT"] * 100 / s["magic_formula"]["recentTA"])
+            if s["magic_formula"]["recentEV"] == 0:
+                result["ey"] = "∞"
+            else:
+                result["ey"] = "%d%%" % (s["magic_formula"]["recentIncome"] * 100 / s["magic_formula"]["recentEV"])
+            results.append(result)
+        self.db.view.update({"key" : "magicformula_json"},
+                            {"$set" : {"value" : json.dumps(results)}},
+                            safe=True,
+                            upsert=True,
+                            callback=self.bind(self.__db_update_callback))
+        
+    def __db_update_callback(self, response):
+        self.finish()
+        
+    def __magicformula(self, stocks):
+        results = sorted(stocks, cmp=lambda a, b : self.__cmp_rotc(a, b))
+        for i in range(len(results)):
+            if i != 0 and self.__cmp_rotc(results[i], results[i-1]) == 0:
+                results[i]["rotcRank"] = results[i-1]["rotcRank"]
+            else:
+                results[i]["rotcRank"] = i + 1
+        results = sorted(results, cmp=lambda a, b : self.__cmp_ey(a, b))
+        for i in range(len(results)):
+            if i != 0 and self.__cmp_ey(results[i], results[i-1]) == 0:
+                results[i]["eyRank"] = results[i-1]["eyRank"]
+            else:
+                results[i]["eyRank"] = i + 1
+        results = sorted(results, key=lambda stock : stock["rotcRank"] + stock["eyRank"])
+        for i in range(len(results)):
+            if i != 0 and results[i]["rotcRank"] + results[i]["eyRank"] == results[i-1]["rotcRank"] + results[i-1]["eyRank"]:
+                results[i]["rank"] = results[i-1]["rank"]
+            else:
+                results[i]["rank"] = i + 1
+        return results
+    
+    def __cmp_ey(self, s1, s2):
+        if s1["magic_formula"]["recentEV"] * s2["magic_formula"]["recentEV"] == 0:
+            if s1["magic_formula"]["recentEV"] == 0:
+                return -1
+            else:
+                return 1
+        else:
+            return -cmp(s1["magic_formula"]["recentIncome"] / s1["magic_formula"]["recentEV"], s2["magic_formula"]["recentIncome"] / s2["magic_formula"]["recentEV"])
+    
+    def __cmp_rotc(self, s1, s2):
+        if s1["magic_formula"]["recentTA"] * s2["magic_formula"]["recentTA"] == 0:
+            if s1["magic_formula"]["recentTA"] == 0:
+                return -1
+            else:
+                return 1
+        else:
+            return -cmp(s1["magic_formula"]["recentEBIT"] / s1["magic_formula"]["recentTA"], s2["magic_formula"]["recentEBIT"] / s2["magic_formula"]["recentTA"])
+    

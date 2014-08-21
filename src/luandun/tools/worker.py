@@ -77,6 +77,7 @@ def main(argv):
     threads = []
     for i in range(number):
         threads.append(WorkerThread())
+        threads[i].setDaemon(True)
         threads[i].start()
     for i in range(number):
         threads[i].join()
