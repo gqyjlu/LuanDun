@@ -28,7 +28,7 @@ class MongoHandler(RequestHandler):
                                          maxcached=10, 
                                          maxconnections=50, 
                                          maxusage=10, 
-                                         dbname="magicformula",
+                                         dbname=self.dbname,
                                          host="127.0.0.1",
                                          port=27017)
         return self._db
